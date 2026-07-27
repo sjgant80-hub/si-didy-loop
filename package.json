@@ -1,0 +1,12 @@
+{
+  "name": "si-didy-loop",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "si-didy-loop.mjs",
+  "description": "The conductor — wires the five solids into a self-feeding loop (INIT to BUILD to VERIFY to REMEMBER to EXPLORE) that spirals instead of dead-orbiting, verified by the attractor liveness gate.",
+  "author": "sjgant80-hub <sjgant80@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test"
+  }
+}
