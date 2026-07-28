@@ -1,0 +1,17 @@
+[
+  {
+    "mutation": ">= → >",
+    "snippet": "return { valid: forge > 0 && resolve >= KAPPA * forge, forge, resolve };",
+    "reason": "equivalent: KAPPA = 1/φ is irrational, so resolve == KAPPA·forge is impossible for integer resolve/forge — `>=` and `>` never differ"
+  },
+  {
+    "mutation": "> → >=",
+    "snippet": "while (this.recent.some((r) => { const d = wrap(theta - r); return d < 0.06 || d > TAU - 0",
+    "reason": "equivalent: d is a continuous wrapped angle; d == TAU-0.06 exactly is measure-zero (never hit), so `>` and `>=` never differ on any reached input"
+  },
+  {
+    "mutation": "< → <=",
+    "snippet": "while (this.recent.some((r) => { const d = wrap(theta - r); return d < 0.06 || d > TAU - 0",
+    "reason": "equivalent: the two `<` here are a measure-zero float boundary (d == 0.06, never hit) and the stall-guard iteration cap (g reaches 1 when the guard fires, never near 6) — neither differs on any reached input"
+  }
+]

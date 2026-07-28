@@ -10,20 +10,24 @@
 // attractor band, between the dead orbit (too little novelty) and the runaway (too much). The §3 spiral fix:
 //   · GOLDEN ADVANCE   — EXPLORE offsets the phase by the golden angle each cycle (never the same point)
 //   · STALL DETECTION  — if the next phase lands near a recent one, kick it (no settling)
-//   · FAILURE-FORWARD  — VERIFY's rejection is signal: a runaway build backs complexity off (learn, don't retry)
+//   · FAILURE-FORWARD  — VERIFY's rejection is signal: a runaway build backs complexity off, AND becomes a
+//                        DURABLE miss-signature (missig), so EXPLORE never re-seeds a known-doomed region
 //   · SUCCESSION       — re-center on the newest stored success (climb around your latest result)
 //
 // SANDBOXED: BUILD forges fold-signatures (pure data), VERIFY/REMEMBER/EXPLORE are pure/local. Nothing here
 // touches the real world — the loop's *liveness* is proven before any organ is ever wired to a real action.
-// The REMEMBER organ is INJECTABLE (constructor takes `memory`): pass a fall-remember for the real store, or
-// use the built-in minimal one. Self-contained, zero-dependency, deterministic.
+// Both stores are INJECTABLE: `memory` (REMEMBER — pass a fall-remember, or the built-in minimal one) and
+// `misses` (missig's MissMemory — durable failure-forward). Wires in its sibling missig. Deterministic.
 // ════════════════════════════════════════════════════════════════
+
+import { MissMemory, missFromWitness } from '../missig/missig.mjs';
 
 export const KAPPA = (Math.sqrt(5) - 1) / 2;             // 1/φ — the κ-gate threshold
 export const GOLDEN = 2.399963229728653;                 // golden angle in radians (137.507°)
 const TAU = 2 * Math.PI;
 const SPINE = [2, 3, 5, 7, 11, 13, 17];
 const wrap = (x) => ((x % TAU) + TAU) % TAU;
+const regionNear = (a, b) => a.phase === b.phase && a.c === b.c;   // same coarse (phase-bucket, complexity) cell
 
 // ── the five organs ──────────────────────────────────────────────────────────
 export const INIT = (seed) => ({ theta: seed.theta, complexity: seed.complexity, spine: SPINE }); // tetra: genesis
@@ -47,14 +51,19 @@ export function VERIFY(cand) {
 export const minimalMemory = () => { const items = []; return { store(m) { items.push(m); return m; }, get size() { return items.length; }, items }; };
 
 export class SiDidyLoop {
-  constructor({ strategy = 'spiral', memory } = {}) {
+  constructor({ strategy = 'spiral', memory, misses, learn = true } = {}) {
     this.strategy = strategy;
     this.mem = memory || minimalMemory();                  // REMEMBER organ (injectable)
+    this.misses = misses || new MissMemory({ near: regionNear }); // durable failure-forward (missig, injectable)
+    this.learn = strategy === 'spiral' && learn !== false; // only the spiral consults its misses
     this.state = { theta: 0.5, complexity: 3 };
     this.recent = []; this.lastRejected = false; this.newestStoredComplexity = 3;
-    this.cycle = 0; this.stored = 0; this.rejected = 0;
+    this.cycle = 0; this.stored = 0; this.rejected = 0; this.avoided = 0;
     this.forgeSeries = []; this.visited = new Set();
   }
+
+  // a coarse region of the attempt space — the durable unit of "we've missed here before"
+  region(s) { return { phase: Math.floor(wrap(s.theta) / TAU * 12), c: Math.round(s.complexity) }; }
 
   step() {
     const task = INIT(this.state);
@@ -65,7 +74,7 @@ export class SiDidyLoop {
     if (v.valid) {
       this.mem.store({ text: `fold θ${this.state.theta.toFixed(3)} c${this.state.complexity}`, sig: cand });
       this.stored++; this.newestStoredComplexity = this.state.complexity; this.lastRejected = false;
-    } else { this.rejected++; this.lastRejected = true; }
+    } else { this.rejected++; this.lastRejected = true; this.misses.record(missFromWitness(this.region(this.state), v)); }
     this.recent.push(this.state.theta); if (this.recent.length > 8) this.recent.shift();
     this.state = this.EXPLORE(v);
     this.cycle++;
@@ -82,13 +91,18 @@ export class SiDidyLoop {
     let g = 0;                                                                 // STALL DETECTION
     while (this.recent.some((r) => { const d = wrap(theta - r); return d < 0.06 || d > TAU - 0.06; }) && g++ < 6) theta += GOLDEN;
     let complexity = this.newestStoredComplexity;                             // SUCCESSION (climb around latest success)
-    complexity += this.lastRejected ? -1 : 0.5;                               // FAILURE FEEDS FORWARD
+    complexity += this.lastRejected ? -1 : 0.5;                               // FAILURE FEEDS FORWARD (in-loop)
     complexity = Math.max(1, Math.min(complexity, 12));
+    // DURABLE FAILURE-FORWARD (missig): if the next region is one already learned to be doomed, back further
+    // off rather than re-attempt it — the loop stops wasting cycles on regions it has missed before.
+    for (let a = 0; this.learn && a < 4 && this.misses.nearMiss(this.region({ theta, complexity })); a++) {
+      complexity = Math.max(1, complexity - 1); this.avoided++;
+    }
     return { theta, complexity };
   }
 
   run(cycles) { for (let i = 0; i < cycles; i++) this.step(); return this.report(); }
-  report() { return { cycles: this.cycle, stored: this.stored, rejected: this.rejected, distinct: this.visited.size, forgeSeries: this.forgeSeries.slice() }; }
+  report() { return { cycles: this.cycle, stored: this.stored, rejected: this.rejected, distinct: this.visited.size, misses: this.misses.size, avoided: this.avoided, forgeSeries: this.forgeSeries.slice() }; }
 }
 
 export default SiDidyLoop;
