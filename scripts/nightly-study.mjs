@@ -23,12 +23,14 @@ const stamp = new Date().toISOString();
 const seed = run('seed-dna.mjs');
 const study = run('study.mjs', ['--all']);
 const dream = run('deepen-run.mjs', ['--dream']);
+const mind = run('export-mind.mjs');
 
 const line = [
   `── ${stamp}`,
   seed.ok ? seed.out.trim() : 'SEED FAILED:\n' + seed.out.trim(),
   study.ok ? study.out.trim() : 'STUDY FAILED:\n' + study.out.trim(),
   dream.ok ? dream.out.split('\n')[0] : 'DREAM FAILED',
+  mind.ok ? mind.out.trim() : 'MIND EXPORT FAILED',
   '',
 ].join('\n');
 appendFileSync(LOG, line + '\n');

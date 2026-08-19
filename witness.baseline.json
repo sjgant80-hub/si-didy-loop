@@ -18,5 +18,10 @@
     "mutation": ">= → >",
     "snippet": "const c = Number.isFinite(cycle) && cycle >= 0 ? Math.floor(cycle) : 0;",
     "reason": "boundary identity: >= and > differ only at cycle === 0, and both arms then yield the same 0 (Math.floor(0) on one side, the sanitised default on the other). No input separates them."
+  },
+  {
+    "mutation": ">= → >",
+    "snippet": "const n = (v) => (Number.isFinite(v) && v >= 0) ? v : 0;",
+    "reason": "boundary identity: >= and > differ only at v === 0, and both arms then yield the same 0 (the value itself on one side, the sanitised default on the other). No input separates them."
   }
 ]
