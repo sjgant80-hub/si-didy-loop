@@ -41,7 +41,7 @@ if (!existsSync(join(FORGE, 'studio.mjs'))) {
   console.error('The operator produces through the Forge Studio — clone it beside si-didy-loop first.');
   process.exit(1);
 }
-const { compose, validateComposition } = await import(pathToFileURL(join(FORGE, 'studio.mjs')).href);
+const { compose, validateComposition, ORGANS } = await import(pathToFileURL(join(FORGE, 'studio.mjs')).href);
 const { makeLedger, mint, verifyLedger, bridgeFace, bridgeOk } = await import(pathToFileURL(join(FORGE, 'babykcc.mjs')).href);
 const { makeBundle } = await import(pathToFileURL(join(FORGE, 'artifact.mjs')).href);
 
@@ -117,9 +117,25 @@ function door(streamId, cap, prep, at) {
 
 const mark = (id, note, at) => { state.streamLog[id] = { at, note }; };
 
+// learn-till-win means NEW ground, not re-treading: the named mandate first, then every
+// unbuilt 3-organ combination from the studio palette, in deterministic studio order. A
+// re-mint of the same organ set scores nothing, and the operator knows it.
+function nextBrief() {
+  const done = new Set(state.builds.map(b => [...b.organs].sort().join('+')));
+  for (const m of BUILD_MANDATE) if (!done.has([...m.organs].sort().join('+'))) return m;
+  const ids = ORGANS.map(g => g.id);
+  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) for (let k = j + 1; k < ids.length; k++) {
+    const set = [ids[i], ids[j], ids[k]];
+    if (done.has([...set].sort().join('+'))) continue;
+    return { slug: set.join('-'), name: `a ${set.join('·')} bench`, organs: set };
+  }
+  return null;   // all 56 combinations built — the palette is exhausted, and saying so beats pretending
+}
+
 // ── the forge production turn (also the forge-studio + sovereign-artifacts streams' engine) ──
 async function forgeTurn(at) {
-  const brief = BUILD_MANDATE[state.tally.produced % BUILD_MANDATE.length];
+  const brief = nextBrief();
+  if (!brief) { console.log('   every organ combination is already built — nothing new to produce from this palette'); return null; }
   if (!auto('forge-studio', 'compose-build')) return null;
   const built = compose({ name: brief.name, organs: brief.organs });
   state.tally.produced += 1;
