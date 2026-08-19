@@ -43,7 +43,7 @@ if (!existsSync(join(FORGE, 'studio.mjs'))) {
 }
 const { compose, validateComposition, ORGANS } = await import(pathToFileURL(join(FORGE, 'studio.mjs')).href);
 const { makeLedger, mint, verifyLedger, bridgeFace, bridgeOk } = await import(pathToFileURL(join(FORGE, 'babykcc.mjs')).href);
-const { makeBundle } = await import(pathToFileURL(join(FORGE, 'artifact.mjs')).href);
+const { makeBundle, chainsTo } = await import(pathToFileURL(join(FORGE, 'artifact.mjs')).href);
 
 const subtle = webcrypto.subtle;
 const enc = new TextEncoder();
@@ -117,25 +117,54 @@ function door(streamId, cap, prep, at) {
 
 const mark = (id, note, at) => { state.streamLog[id] = { at, note }; };
 
-// learn-till-win means NEW ground, not re-treading: the named mandate first, then every
-// unbuilt 3-organ combination from the studio palette, in deterministic studio order. A
-// re-mint of the same organ set scores nothing, and the operator knows it.
-function nextBrief() {
-  const done = new Set(state.builds.map(b => [...b.organs].sort().join('+')));
-  for (const m of BUILD_MANDATE) if (!done.has([...m.organs].sort().join('+'))) return m;
+// learn-till-win means NEW ground, not re-treading — and now it means DEPTH too. One invariant
+// holds across everything: no two builds ever share an organ set. The production ladder:
+//   compose: the named mandate first, then unbuilt 4-organ workshops (deepest first), then the
+//            remaining 3-organ benches, then honestly exhausted.
+//   fork:    gen-2 — an existing gen-1 artifact grown by one organ it lacks, minted with real
+//            fork lineage (parent_kpid). One heir per artifact; gen-2 does not fork again.
+// Sweeps alternate fork/compose so both depth and lineage grow, with fallback either way.
+const setKey = (organs) => [...organs].sort().join('+');
+
+function* combos(ids, k, start = 0, acc = []) {
+  if (acc.length === k) { yield [...acc]; return; }
+  for (let i = start; i <= ids.length - (k - acc.length); i++) yield* combos(ids, k, i + 1, [...acc, ids[i]]);
+}
+
+function nextCompose(done) {
+  for (const m of BUILD_MANDATE) if (!done.has(setKey(m.organs))) return m;
   const ids = ORGANS.map(g => g.id);
-  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) for (let k = j + 1; k < ids.length; k++) {
-    const set = [ids[i], ids[j], ids[k]];
-    if (done.has([...set].sort().join('+'))) continue;
-    return { slug: set.join('-'), name: `a ${set.join('·')} bench`, organs: set };
+  for (const k of [4, 3]) {
+    for (const set of combos(ids, k)) {
+      if (done.has(setKey(set))) continue;
+      return { slug: set.join('-'), name: `a ${set.join('·')} ${k === 4 ? 'workshop' : 'bench'}`, organs: set };
+    }
   }
-  return null;   // all 56 combinations built — the palette is exhausted, and saying so beats pretending
+  return null;   // every combination built — the palette is exhausted, and saying so beats pretending
+}
+
+function nextFork(done) {
+  const forked = new Set(state.builds.filter(b => b.parent).map(b => b.parent));
+  const ids = ORGANS.map(g => g.id);
+  for (const b of state.builds) {
+    if (b.parent) continue;             // gen-2 does not fork again
+    if (forked.has(b.kpid)) continue;   // one heir per artifact
+    for (const add of ids) {
+      if (b.organs.includes(add)) continue;
+      const set = [...b.organs, add];
+      if (done.has(setKey(set))) continue;   // an heir must be new ground too
+      return { slug: `${b.slug}-g2`, name: `${b.slug}, second generation — grown by ${add}`, organs: set, parent: b };
+    }
+  }
+  return null;
 }
 
 // ── the forge production turn (also the forge-studio + sovereign-artifacts streams' engine) ──
 async function forgeTurn(at) {
-  const brief = nextBrief();
-  if (!brief) { console.log('   every organ combination is already built — nothing new to produce from this palette'); return null; }
+  const done = new Set(state.builds.map(b => setKey(b.organs)));
+  const wantFork = state.builds.length % 2 === 1;
+  const brief = wantFork ? (nextFork(done) || nextCompose(done)) : (nextCompose(done) || nextFork(done));
+  if (!brief) { console.log('   every organ combination is built and every artifact has its heir — the palette is exhausted'); return null; }
   if (!auto('forge-studio', 'compose-build')) return null;
   const built = compose({ name: brief.name, organs: brief.organs });
   state.tally.produced += 1;
@@ -146,11 +175,15 @@ async function forgeTurn(at) {
   console.log(`   compose ${brief.name} → validate: ${v.ok ? 'CLEAN' : 'REFUSED — ' + v.reasons.join('; ')}`);
   if (!v.ok) return null;
   const seal = await sha(built.html);
-  const bundle = makeBundle({ slug: brief.slug, name: brief.name, domain: 'operator', seal, faceValue: built.organs.length, mintedAt: at, operator: 'si-didy' });
+  const bundle = makeBundle({ slug: brief.slug, name: brief.name, domain: 'operator', seal, faceValue: built.organs.length, mintedAt: at, operator: 'si-didy', parentKpid: brief.parent?.kpid });
   if (auto('sovereign-artifacts', 'mint')) {
     const minted = await mint(state.ledger, bundle, at, sha);
     if (minted.ok) state.ledger = minted.ledger;
     console.log(`   mint: ${minted.why}`);
+    if (brief.parent) {
+      const chained = chainsTo(bundle, { mint: { kpid: brief.parent.kpid } });
+      console.log(`   lineage: ${chained ? `gen-2 CHAINS to ${brief.parent.kpid}` : 'BROKEN — the fork does not point at its parent'}`);
+    }
   }
   const proof = await verifyLedger(state.ledger, sha);
   if (proof.ok) state.tally.internalSupply = proof.supply;
@@ -163,7 +196,7 @@ async function forgeTurn(at) {
   }
   state.tally.reuseDepth = reuseDepth();
   if (!state.builds.some(b => b.kpid === bundle.mint.kpid)) {
-    state.builds.push({ slug: brief.slug, kpid: bundle.mint.kpid, organs: built.organs, at });
+    state.builds.push({ slug: brief.slug, kpid: bundle.mint.kpid, organs: built.organs, at, ...(brief.parent ? { parent: brief.parent.kpid, gen: 2 } : {}) });
   }
   return { brief, bundle };
 }
@@ -203,6 +236,10 @@ async function sweep() {
       const last = state.ledger.entries.at(-1);
       const sealHeld = !!last && /:[0-9a-f]{8}$/.test(last.kpid) && last.kpid.endsWith(String(last.fork_sha).slice(0, 8));
       console.log(`   verify-local: last artifact ${last?.kpid} — kpid carries its own seal: ${sealHeld ? 'yes' : 'NO — identity and content have come apart'}`);
+      if (last?.parent_kpid) {
+        const anchored = state.ledger.entries.some(e => e.kpid === last.parent_kpid);
+        console.log(`   verify-local: parent ${last.parent_kpid} ${anchored ? 'is in this ledger — lineage anchored' : 'is NOT in this ledger — an orphan claiming a parent'}`);
+      }
       mark('sovereign-artifacts', `verified ${last?.kpid}`, at);
     }
     mark('deepening-loop', 'edges remembered into the overlay', at);
