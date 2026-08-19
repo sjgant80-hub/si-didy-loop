@@ -1,23 +1,21 @@
 #!/usr/bin/env node
-// si-didy-loop · scripts/operate.mjs — the autonomous business operator, running.
+// si-didy-loop · scripts/operate.mjs — the autonomous business operator, running EVERY stream.
 //
-// This is si-didy's OWN loop: produce → validate → mint-internal → remember → track. No human
-// in it, and nothing in it CAN touch money, the law, or the outside world — those are threshold
-// doors, and this runner can only PREPARE them into a queue that executes on the master key's
-// signature alone (scripts/master-key.mjs, the key-holder's tool, not this one).
+// The SCOPE REGISTRY (scope.mjs) is the master list: eight streams, each with its AUTO
+// capabilities and its KEY doors, under one mandate and one master key. This runner reads the
+// registry and operates the AUTO layer of all of it — full estate access, no human — and
+// PREPARES every KEY door into the one queue, where it waits unsigned for the key-holder
+// (scripts/master-key.mjs). Every act goes through actionFor() + classify(): the registry maps,
+// the kernel judges, and nothing runs outside what a stream registered.
 //
-// si-didy has its own Ed25519 identity here (local-dna/operator-key.json). It is NOT the master
-// key and never can be: approval verifies against local-dna/master.pub, and the master PRIVATE
-// key lives in the key-holder's home directory where this process has no business. Run
-// `--try-self-sign` to watch the refusal happen for real.
-//
-//   node scripts/operate.mjs --turns 3       run the auto loop
-//   node scripts/operate.mjs --status        scoreboard + the queue standing
+//   node scripts/operate.mjs --sweep         one pass across ALL eight streams
+//   node scripts/operate.mjs --turns 3       the forge production loop alone
+//   node scripts/operate.mjs --status        scoreboard + per-stream coverage + the one queue
 //   node scripts/operate.mjs --try-self-sign 0   prove si-didy cannot approve its own door
 //
-// Everything this writes is LOCAL-ONLY (local-dna/, gitignored). The organs it wires — the Forge
-// Studio and the baby-KCC ledger — are fallkard-forge's, imported by observation from the sibling
-// checkout: standalone or linked, never a dependency baked into either repo.
+// Everything this writes is LOCAL-ONLY (local-dna/, gitignored). The forge organs are
+// fallkard-forge's, linked by observation from the sibling checkout: standalone or linked,
+// never a dependency baked in.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -25,6 +23,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { webcrypto } from 'node:crypto';
 
 import { classify, signableItem, makeQueue, prepare, approve, executable, scoreboard } from '../operator.mjs';
+import { MANDATE, STREAMS, actionFor, coverage } from '../scope.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const DNA_DIR = join(here, '..', 'local-dna');
@@ -33,6 +32,7 @@ const QUEUE_F = join(DNA_DIR, 'operator-queue.json');
 const OVERLAY_F = join(DNA_DIR, 'overlay.json');
 const MASTER_PUB_F = join(DNA_DIR, 'master.pub');
 const OWN_KEY_F = join(DNA_DIR, 'operator-key.json');
+const ESTATE_INDEX_F = 'C:/Users/sjgan/.claude/projects/C--Users-sjgan--claude/memory/estate-index.json';
 
 // ── the forge organs, linked by observation from the sibling checkout ──
 const FORGE = join(here, '..', '..', 'fallkard-forge');
@@ -42,7 +42,7 @@ if (!existsSync(join(FORGE, 'studio.mjs'))) {
   process.exit(1);
 }
 const { compose, validateComposition } = await import(pathToFileURL(join(FORGE, 'studio.mjs')).href);
-const { makeLedger, mint, verifyLedger } = await import(pathToFileURL(join(FORGE, 'babykcc.mjs')).href);
+const { makeLedger, mint, verifyLedger, bridgeFace, bridgeOk } = await import(pathToFileURL(join(FORGE, 'babykcc.mjs')).href);
 const { makeBundle } = await import(pathToFileURL(join(FORGE, 'artifact.mjs')).href);
 
 const subtle = webcrypto.subtle;
@@ -70,8 +70,8 @@ const verify = async (s, sigB64, pubB64) => {
   return subtle.verify({ name: 'Ed25519' }, key, Buffer.from(sigB64, 'base64'), enc.encode(s));
 };
 
-// ── the mandate: what si-didy produces, rotated deterministically — real studio organs only ──
-const MANDATE = [
+// ── the production mandate: what the forge composes, rotated deterministically ──
+const BUILD_MANDATE = [
   { slug: 'stallholder-till', name: 'a stallholder till', organs: ['tally', 'receipts', 'notes'] },
   { slug: 'keeper-logbook', name: 'a keeper logbook', organs: ['notes', 'seal', 'vault'] },
   { slug: 'quote-pad', name: 'a quote pad', organs: ['tally', 'notes', 'fold'] },
@@ -82,9 +82,12 @@ const MANDATE = [
 const state = readJson(STATE_F, {
   kind: 'operator-state',
   ledger: makeLedger('sididy-operator'),
+  meshLedger: makeLedger('forge-line-b'),
   tally: { produced: 0, validated: 0, gatesRun: 0, gatesPassed: 0, internalSupply: 0, reuseDepth: 0 },
-  builds: [],
+  builds: [], listings: null, drafts: [], proposals: [], streamLog: {},
 });
+state.meshLedger = state.meshLedger || makeLedger('forge-line-b');
+state.drafts = state.drafts || []; state.proposals = state.proposals || []; state.streamLog = state.streamLog || {};
 let queue = readJson(QUEUE_F, makeQueue());
 
 const reuseDepth = () => {
@@ -93,69 +96,173 @@ const reuseDepth = () => {
   return Object.values(seen).filter(n => n > 1).length;
 };
 
-async function turn(n) {
-  const at = new Date().toISOString();
-  const brief = MANDATE[state.tally.produced % MANDATE.length];
-  console.log(`\n── turn ${n} · produce: ${brief.name} ──`);
+// run one registered AUTO capability: the registry maps it, the kernel judges it, then it runs
+function auto(streamId, cap, detail) {
+  const built = actionFor(streamId, cap, detail);
+  if (!built.ok) { console.log(`   ✗ ${streamId}.${cap} REFUSED — ${built.why}`); return null; }
+  const lane = classify(built.action);
+  if (lane.lane !== 'auto') { console.log(`   ✗ ${streamId}.${cap} is not auto — ${lane.why}`); return null; }
+  return built.action;
+}
 
-  // produce — an auto kind; watch it refuse the queue
-  const lane = classify({ kind: 'produce' });
-  console.log(`   lane: ${lane.lane} — ${lane.why}`);
+// prepare one registered KEY door into the one queue (deduped per stream+cap while queued)
+function door(streamId, cap, prep, at) {
+  const already = queue.items.some(i => i.status === 'queued' && i.action.stream === streamId && i.action.cap === cap);
+  if (already) return;
+  const built = actionFor(streamId, cap, { what: `${streamId} wants ${cap}` });
+  if (!built.ok || built.lane !== 'threshold') return;
+  const p = prepare(queue, built.action, prep, at);
+  if (p.ok) { queue = p.queue; console.log(`   ⚿ door queued unsigned (seq ${p.item.seq}): ${cap} — ${executable(p.item).why}`); }
+}
+
+const mark = (id, note, at) => { state.streamLog[id] = { at, note }; };
+
+// ── the forge production turn (also the forge-studio + sovereign-artifacts streams' engine) ──
+async function forgeTurn(at) {
+  const brief = BUILD_MANDATE[state.tally.produced % BUILD_MANDATE.length];
+  if (!auto('forge-studio', 'compose-build')) return null;
   const built = compose({ name: brief.name, organs: brief.organs });
   state.tally.produced += 1;
-
-  // validate — the studio's own sovereignty gate
+  if (!auto('forge-studio', 'test-live')) return null;
   state.tally.gatesRun += 1;
   const v = validateComposition(built.html);
   if (v.ok) { state.tally.gatesPassed += 1; state.tally.validated += 1; }
-  console.log(`   validate: ${v.ok ? 'CLEAN' : 'REFUSED — ' + v.reasons.join('; ')}`);
-  if (!v.ok) return; // an invalid build mints nothing and remembers nothing
-
-  // mint-internal — internal KONO on the baby ledger, never money
+  console.log(`   compose ${brief.name} → validate: ${v.ok ? 'CLEAN' : 'REFUSED — ' + v.reasons.join('; ')}`);
+  if (!v.ok) return null;
   const seal = await sha(built.html);
   const bundle = makeBundle({ slug: brief.slug, name: brief.name, domain: 'operator', seal, faceValue: built.organs.length, mintedAt: at, operator: 'si-didy' });
-  const minted = await mint(state.ledger, bundle, at, sha);
-  if (minted.ok) state.ledger = minted.ledger;
-  console.log(`   mint-internal: ${minted.why}`);
+  if (auto('sovereign-artifacts', 'mint')) {
+    const minted = await mint(state.ledger, bundle, at, sha);
+    if (minted.ok) state.ledger = minted.ledger;
+    console.log(`   mint: ${minted.why}`);
+  }
   const proof = await verifyLedger(state.ledger, sha);
-  state.tally.internalSupply = proof.ok ? proof.supply : state.tally.internalSupply;
-
-  // remember — the build lands in the same overlay the nightly study reads
-  const overlay = readJson(OVERLAY_F, { edges: [], cycles: 0, shadow: [] });
-  for (const organ of built.organs) {
-    overlay.edges.push({ from: `operator:${brief.slug}`, to: `organ:${organ}`, type: 'built-with', weight: 0.6180339887498949, meta: { by: 'operator', at, via: `${brief.name} — composed, validated, minted ${bundle.mint.kpid}` } });
+  if (proof.ok) state.tally.internalSupply = proof.supply;
+  if (auto('deepening-loop', 'fan-gate-remember')) {
+    const overlay = readJson(OVERLAY_F, { edges: [], cycles: 0, shadow: [] });
+    for (const organ of built.organs) {
+      overlay.edges.push({ from: `operator:${brief.slug}`, to: `organ:${organ}`, type: 'built-with', weight: 0.6180339887498949, meta: { by: 'operator', at, via: `${brief.name} — composed, validated, minted ${bundle.mint.kpid}` } });
+    }
+    writeJson(OVERLAY_F, overlay);
   }
-  writeJson(OVERLAY_F, overlay);
-  console.log(`   remember: ${built.organs.length} edge(s) into the overlay — the nightly export carries them into the mind`);
-
-  // track
   state.tally.reuseDepth = reuseDepth();
-  state.builds.push({ slug: brief.slug, kpid: bundle.mint.kpid, organs: built.organs, at });
-
-  // threshold demonstration — si-didy WANTS to publish this build, prepares fully, and is stopped
-  const already = queue.items.some(i => i.prep && i.prep.slug === brief.slug && i.status === 'queued');
-  if (!already) {
-    const p = prepare(queue, { kind: 'publish-external', what: `publish ${brief.name} as a public repo + live page` },
-      { slug: brief.slug, kpid: bundle.mint.kpid, html: built.html, target: `sjgant80-hub/${brief.slug}` }, at);
-    if (p.ok) { queue = p.queue; console.log(`   threshold: PREPARED and QUEUED unsigned (seq ${p.item.seq}) — ${executable(p.item).why}`); }
+  if (!state.builds.some(b => b.kpid === bundle.mint.kpid)) {
+    state.builds.push({ slug: brief.slug, kpid: bundle.mint.kpid, organs: built.organs, at });
   }
+  return { brief, bundle };
+}
+
+// ── THE SWEEP: one pass over every registered stream's AUTO layer + its representative door ──
+async function sweep() {
+  const at = new Date().toISOString();
+  console.log(MANDATE + '\n');
+  const cov = coverage();
+  console.log(`scope: ${cov.why}\n`);
+
+  console.log(`── fallworld-market · ${at} ──`);
+  if (auto('fallworld-market', 'run-listings')) {
+    const perOrgan = {};
+    for (const b of state.builds) for (const o of b.organs) perOrgan[o] = (perOrgan[o] || 0) + 1;
+    state.listings = { at, builds: state.builds.length, latest: state.builds.at(-1)?.kpid || null, perOrgan };
+    console.log(`   listings tracked: ${state.listings.builds} build(s) in the catalogue · latest ${state.listings.latest || '(none)'}`);
+    mark('fallworld-market', `listings ${state.listings.builds}`, at);
+  }
+  door('fallworld-market', 'publish-release', { release: 'the current catalogue as a public showcase', builds: state.builds.length }, at);
+
+  console.log(`── ai-native-solutions ──`);
+  if (auto('ai-native-solutions', 'draft-proposal')) {
+    const vertical = ['small stays', 'market traders', 'sole-trader legal', 'site keepers'][state.drafts.length % 4];
+    const draft = { at, vertical, words: `Scoping draft (unsent): for ${vertical}, the estate maps konomium-vault (books), falljustice (letters), glampos-pattern (bookings), witness (the trust rail) — proof-of-play gate on every deliverable.` };
+    state.drafts.push(draft);
+    console.log(`   drafted (words, unsent): proposal for ${vertical} — ${state.drafts.length} in the drawer`);
+    mark('ai-native-solutions', `drafts ${state.drafts.length}`, at);
+  }
+  door('ai-native-solutions', 'send-binding-proposal', { draft: state.drafts.at(-1)?.words || '', note: 'client relationships and deals stay human' }, at);
+
+  console.log(`── forge-studio + sovereign-artifacts + deepening-loop (one production turn) ──`);
+  const made = await forgeTurn(at);
+  if (made) {
+    mark('forge-studio', `built ${made.brief.slug}`, at);
+    if (auto('sovereign-artifacts', 'verify-local')) {
+      const last = state.ledger.entries.at(-1);
+      const sealHeld = !!last && /:[0-9a-f]{8}$/.test(last.kpid) && last.kpid.endsWith(String(last.fork_sha).slice(0, 8));
+      console.log(`   verify-local: last artifact ${last?.kpid} — kpid carries its own seal: ${sealHeld ? 'yes' : 'NO — identity and content have come apart'}`);
+      mark('sovereign-artifacts', `verified ${last?.kpid}`, at);
+    }
+    mark('deepening-loop', 'edges remembered into the overlay', at);
+  }
+  door('forge-studio', 'publish-artifact', { kpid: made?.bundle.mint.kpid || state.builds.at(-1)?.kpid || '', target: 'public release' }, at);
+  door('sovereign-artifacts', 'external-release', { kpid: state.builds.at(-1)?.kpid || '' }, at);
+
+  console.log(`── baby-kcc ──`);
+  if (auto('baby-kcc', 'verify-chain')) {
+    const proof = await verifyLedger(state.ledger, sha);
+    console.log(`   chain re-proven: ${proof.why}`);
+    mark('baby-kcc', `supply ${proof.supply} KCC across ${proof.count} entries`, at);
+  }
+  door('baby-kcc', 'bridge-real-money', { note: 'COUNSEL FIRST — this door is prepared, and that is all it is', rail: 'none chosen' }, at);
+
+  console.log(`── two-forge-mesh ──`);
+  if (auto('two-forge-mesh', 'mint-genome-cards')) {
+    const gname = `genome-${state.meshLedger.entries.length}`;
+    const gseal = await sha(gname + at);
+    const gb = makeBundle({ slug: gname, name: gname, domain: 'mesh', seal: gseal, faceValue: 1, mintedAt: at, operator: 'forge-line-b' });
+    const gm = await mint(state.meshLedger, gb, at, sha);
+    if (gm.ok) state.meshLedger = gm.ledger;
+    console.log(`   genome card: ${gm.why}`);
+  }
+  if (auto('two-forge-mesh', 'r7-handshake')) {
+    const shake = bridgeOk(bridgeFace(state.ledger), bridgeFace(state.meshLedger));
+    console.log(`   R7 handshake: ${shake.ok ? 'RECOGNIZED' : 'refused'} — ${shake.why}`);
+    mark('two-forge-mesh', shake.ok ? 'recognition, not merge' : shake.why, at);
+  }
+  door('two-forge-mesh', 'external-mesh-transaction', { peer: 'the other forge-line', nature: 'first cross-mesh exchange' }, at);
+
+  console.log(`── own-ventures ──`);
+  if (auto('own-ventures', 'identify-opportunity')) {
+    const idx = readJson(ESTATE_INDEX_F, null);
+    if (idx && Array.isArray(idx.nodes)) {
+      const topics = ['legal', 'accounting', 'booking', 'trust'];
+      const topic = topics[state.proposals.length % topics.length];
+      const hits = idx.nodes.filter(n => !n.private && ((n.desc || '') + ' ' + (n.topics || []).join(' ') + ' ' + n.name).toLowerCase().includes(topic));
+      state.proposals.push({ at, topic, grounded: hits.length, sample: hits.slice(0, 3).map(n => n.name) });
+      console.log(`   opportunity (grounded in the full index, ${idx.nodes.length} repos): "${topic}" — ${hits.length} estate repo(s) already touch it, e.g. ${hits.slice(0, 3).map(n => n.name).join(', ') || '(none)'}`);
+      mark('own-ventures', `proposal: ${topic} (${hits.length} grounded)`, at);
+    } else {
+      console.log('   the estate index is not readable — an ungrounded proposal is a guess, so none is made');
+    }
+  }
+  door('own-ventures', 'go-live-publish', { venture: state.proposals.at(-1)?.topic || '(none yet)' }, at);
+
+  writeJson(STATE_F, state);
+  writeJson(QUEUE_F, queue);
+  const s = scoreboard(state.tally);
+  const operated = Object.keys(state.streamLog).length;
+  console.log(`\nswept ${operated}/${STREAMS.length} streams · win ${s.win ?? '(no score)'} · supply ${s.internalSupply} KCC · ${queue.items.filter(i => i.status === 'queued').length} door(s) in the ONE queue, all unsigned — node scripts/master-key.mjs --list`);
 }
 
 const args = process.argv.slice(2);
 
 if (args[0] === '--status') {
   const s = scoreboard(state.tally);
-  console.log(JSON.stringify(s, null, 1));
-  console.log(`queue: ${queue.items.length} item(s)`);
-  for (const i of queue.items) console.log(`  [${i.seq}] ${i.action.kind} · ${i.status} · ${executable(i).why}`);
+  console.log(MANDATE + '\n');
+  console.log('scope: ' + coverage().why);
+  console.log('scoreboard: ' + JSON.stringify(s));
+  console.log('\nper-stream (AUTO layer):');
+  for (const st of STREAMS) {
+    const log = state.streamLog[st.id];
+    console.log(`  ${log ? '●' : '○'} ${st.id} — ${log ? `${log.note} (${log.at})` : 'not yet operated'}`);
+  }
+  console.log('\nthe one queue:');
+  if (!queue.items.length) console.log('  (empty)');
+  for (const i of queue.items) console.log(`  [${i.seq}] ${i.action.stream || '?'} · ${i.action.cap || i.action.kind} · ${i.status} · ${executable(i).why}`);
   process.exit(0);
 }
 
 if (args[0] === '--try-self-sign') {
-  // §5.6 — si-didy signs a queued door with its OWN key: the kernel must refuse
   const seq = Number(args[1] ?? 0);
   const item = queue.items.find(i => i.seq === seq);
-  if (!item) { console.error(`no queued item ${seq} — run some turns first`); process.exit(1); }
+  if (!item) { console.error(`no queued item ${seq} — run a sweep first`); process.exit(1); }
   const masterPub = existsSync(MASTER_PUB_F) ? readFileSync(MASTER_PUB_F, 'utf8').trim() : '';
   const me = await ownKey();
   const selfSig = Buffer.from(new Uint8Array(await subtle.sign({ name: 'Ed25519' }, me.priv, enc.encode(signableItem(item))))).toString('base64');
@@ -164,9 +271,19 @@ if (args[0] === '--try-self-sign') {
   process.exit(out.ok ? 1 : 0);
 }
 
+if (args[0] === '--sweep') {
+  await sweep();
+  process.exit(0);
+}
+
 const turns = args[0] === '--turns' ? Math.max(1, Number(args[1]) || 1) : 1;
 const before = scoreboard(state.tally).win;
-for (let i = 1; i <= turns; i++) await turn(i);
+for (let i = 1; i <= turns; i++) {
+  console.log(`\n── turn ${i} ──`);
+  const at = new Date().toISOString();
+  const made = await forgeTurn(at);
+  if (made) door('forge-studio', 'publish-artifact', { kpid: made.bundle.mint.kpid, target: 'public release' }, at);
+}
 writeJson(STATE_F, state);
 writeJson(QUEUE_F, queue);
 const after = scoreboard(state.tally);
