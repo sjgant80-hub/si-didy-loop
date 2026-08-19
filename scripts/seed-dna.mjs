@@ -25,19 +25,20 @@ const here = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = join(here, '..', 'local-dna');
 const MEMORY_DIR = 'C:/Users/sjgan/.claude/projects/C--Users-sjgan--claude/memory';
 const INDEX = join(MEMORY_DIR, 'estate-index.json');
-const CHAT_DIR = process.argv.includes('--chats')
-  ? process.argv[process.argv.indexOf('--chats') + 1]
-  : 'C:/Users/sjgan/.claude/projects/C--Users-sjgan--claude';
+const PROJECTS_DIR = 'C:/Users/sjgan/.claude/projects';
+const CHAT_DIRS = process.argv.includes('--chats')
+  ? [process.argv[process.argv.indexOf('--chats') + 1]]
+  : (() => { try { return readdirSync(PROJECTS_DIR).map(d => join(PROJECTS_DIR, d)); } catch { return []; } })();
 
 const nodes = new Map();   // id -> { id, type, meta }
 const edges = [];          // { from, to, type, weight, meta }
 const edgeSeen = new Set();
 const addNode = (id, type, meta) => { if (!nodes.has(id)) nodes.set(id, { id, type, meta }); };
-const addEdge = (from, to, type, meta = {}) => {
+const addEdge = (from, to, type, meta = {}, weight = 1) => {
   const k = `${from} ${type} ${to}`;
   if (edgeSeen.has(k)) return;
   edgeSeen.add(k);
-  edges.push({ from, to, type, weight: 1, meta });
+  edges.push({ from, to, type, weight, meta });
 };
 
 // ── 1 · the estate: repos as nodes; rare shared topics as kin ──
@@ -87,26 +88,66 @@ for (const f of readdirSync(MEMORY_DIR)) {
   }
 }
 
-// ── 3 · CC chats: each session file is one chat-node, edged to the repos it mentions ──
+// ── 3 · CC chats: EVERY project dir, WHOLE files — the reasoning history as graph.
+//        Mention frequency becomes edge weight: a repo named forty times in a session is a
+//        stronger associate than one named once. Files are read in 1MB windows so a 100MB
+//        session neither loads whole nor gets skipped.
 let chatCount = 0, chatEdges = 0;
-try {
-  for (const f of readdirSync(CHAT_DIR)) {
-    if (!f.endsWith('.jsonl')) continue;
-    const path = join(CHAT_DIR, f);
-    if (statSync(path).size < 10000) continue;            // an empty session teaches nothing
+for (const dir of CHAT_DIRS) {
+  let files = [];
+  try { files = readdirSync(dir).filter(f => f.endsWith('.jsonl')); } catch { continue; }
+  for (const f of files) {
+    const path = join(dir, f);
+    let size = 0;
+    try { size = statSync(path).size; } catch { continue; }
+    if (size < 10000) continue;                            // an empty session teaches nothing
+    const counts = new Map();
     const fd = openSync(path, 'r');
-    const buf = Buffer.alloc(200000);
-    const n = readSync(fd, buf, 0, buf.length, 0);
+    const buf = Buffer.alloc(1 << 20);
+    for (let off = 0; off < size; off += buf.length) {
+      const n = readSync(fd, buf, 0, buf.length, off);
+      if (n <= 0) break;
+      const win = buf.toString('utf8', 0, n);
+      for (const name of repoNames) {
+        let i = -1, c = 0;
+        while ((i = win.indexOf(name, i + 1)) !== -1) c++;
+        if (c) counts.set(name, (counts.get(name) || 0) + c);
+      }
+    }
     closeSync(fd);
-    const head = buf.toString('utf8', 0, n);
+    if (!counts.size) continue;                            // a session that names no repo teaches no edges
     const id = 'chat:' + basename(f, '.jsonl').slice(0, 12);
-    addNode(id, 'chat', { src: 'cc-chats', file: f });
+    addNode(id, 'chat', { src: 'cc-chats', file: f, project: basename(dir) });
     chatCount++;
-    for (const name of repoNames) {
-      if (head.includes(name)) { addEdge(id, name, 'reuses', { as: 'discussed' }); chatEdges++; }
+    for (const [name, c] of counts) {
+      addEdge(id, name, 'reuses', { as: 'discussed', mentions: c }, Math.min(1, 0.4 + c * 0.05));
+      chatEdges++;
     }
   }
-} catch { /* no chat dir is a thinner DNA, not a failure */ }
+}
+
+// ── 4 · fallworld's own map: rooms as places, the wing that holds each, evidence tiers ──
+let roomEdges = 0;
+try {
+  const FW = 'C:/Users/sjgan/Downloads/fw-check';
+  const world = JSON.parse(readFileSync(join(FW, 'world.json'), 'utf8'));
+  for (const a of (Array.isArray(world.apps) ? world.apps : world.catalogue || [])) {
+    if (!a || typeof a.id !== 'string') continue;
+    if (nodes.has(a.id)) {
+      const n = nodes.get(a.id);
+      if (a.tier) n.meta.tier = a.tier;                    // the earned rank rides on the node
+    }
+  }
+  const rooms = JSON.parse(readFileSync(join(FW, 'rooms.json'), 'utf8'));
+  for (const w of (Array.isArray(rooms.wings) ? rooms.wings : [])) {
+    const wid = 'wing:' + String(w.name || w.id || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    addNode(wid, 'wing', { src: 'fallworld', name: w.name || w.id });
+    for (const r of (Array.isArray(w.rooms) ? w.rooms : [])) {
+      const target = String(r.u || r.url || '').match(/github\.io\/([a-z0-9-]+)/);
+      if (target && nodes.has(target[1])) { addEdge(wid, target[1], 'contains', { room: r.n || r.name || '' }); roomEdges++; }
+    }
+  }
+} catch { /* no fallworld checkout is a thinner DNA, not a failure */ }
 
 // ── write, locally only ──
 mkdirSync(OUT_DIR, { recursive: true });
@@ -122,3 +163,4 @@ console.log(`seed DNA written → local-dna/dna.json`);
 console.log(`  ${repoCount} repos · ${docCount} memory docs · ${chatCount} chats`);
 console.log(`  ${edges.length} edges (${kinPairs} topic-kin pairs, ${mentionEdges} doc-mentions, ${linkEdges} wiki-links, ${chatEdges} chat-mentions)`);
 console.log(`  ${skippedTopics} hub topics skipped (over 12 members — categories, not kinships) — said, not silent`);
+console.log(`  ${roomEdges} fallworld room edges — the world's own map, as DNA`);
