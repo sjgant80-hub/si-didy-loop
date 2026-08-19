@@ -22,6 +22,18 @@ const run = (script, args = []) => {
 const stamp = new Date().toISOString();
 const seed = run('seed-dna.mjs');
 const study = run('study.mjs', ['--all']);
+
+// the operator works its shift: three sweeps a night, every stream's AUTO layer, bounded by
+// construction — threshold doors queue unsigned and NOTHING crosses them while the key-holder
+// sleeps. The sweeps run BEFORE the dream and the export so the mind wakes up carrying what
+// the operator built.
+const sweeps = [];
+for (let i = 0; i < 3; i++) {
+  const s = run('operate.mjs', ['--sweep']);
+  sweeps.push(s.ok ? (s.out.trim().split('\n').filter(l => /swept |compose /.test(l)).join('\n') || s.out.trim().slice(-200)) : 'SWEEP FAILED:\n' + s.out.trim());
+  if (!s.ok) break;
+}
+
 const dream = run('deepen-run.mjs', ['--dream']);
 const mind = run('export-mind.mjs');
 
@@ -29,6 +41,7 @@ const line = [
   `── ${stamp}`,
   seed.ok ? seed.out.trim() : 'SEED FAILED:\n' + seed.out.trim(),
   study.ok ? study.out.trim() : 'STUDY FAILED:\n' + study.out.trim(),
+  ...sweeps,
   dream.ok ? dream.out.split('\n')[0] : 'DREAM FAILED',
   mind.ok ? mind.out.trim() : 'MIND EXPORT FAILED',
   '',
