@@ -208,16 +208,6 @@ async function sweep() {
   const cov = coverage();
   console.log(`scope: ${cov.why}\n`);
 
-  console.log(`── fallworld-market · ${at} ──`);
-  if (auto('fallworld-market', 'run-listings')) {
-    const perOrgan = {};
-    for (const b of state.builds) for (const o of b.organs) perOrgan[o] = (perOrgan[o] || 0) + 1;
-    state.listings = { at, builds: state.builds.length, latest: state.builds.at(-1)?.kpid || null, perOrgan };
-    console.log(`   listings tracked: ${state.listings.builds} build(s) in the catalogue · latest ${state.listings.latest || '(none)'}`);
-    mark('fallworld-market', `listings ${state.listings.builds}`, at);
-  }
-  door('fallworld-market', 'publish-release', { release: 'the current catalogue as a public showcase', builds: state.builds.length }, at);
-
   console.log(`── ai-native-solutions ──`);
   if (auto('ai-native-solutions', 'draft-proposal')) {
     const vertical = ['small stays', 'market traders', 'sole-trader legal', 'site keepers'][state.drafts.length % 4];
@@ -286,6 +276,18 @@ async function sweep() {
     }
   }
   door('own-ventures', 'go-live-publish', { venture: state.proposals.at(-1)?.topic || '(none yet)' }, at);
+
+  // the market goes LAST: it lists what the forge made THIS sweep too, so the release door
+  // never carries a count one build behind the truth
+  console.log(`── fallworld-market ──`);
+  if (auto('fallworld-market', 'run-listings')) {
+    const perOrgan = {};
+    for (const b of state.builds) for (const o of b.organs) perOrgan[o] = (perOrgan[o] || 0) + 1;
+    state.listings = { at, builds: state.builds.length, latest: state.builds.at(-1)?.kpid || null, perOrgan };
+    console.log(`   listings tracked: ${state.listings.builds} build(s) in the catalogue · latest ${state.listings.latest || '(none)'}`);
+    mark('fallworld-market', `listings ${state.listings.builds}`, at);
+  }
+  door('fallworld-market', 'publish-release', { release: 'the current catalogue as a public showcase', builds: state.builds.length }, at);
 
   writeJson(STATE_F, state);
   writeJson(QUEUE_F, queue);
