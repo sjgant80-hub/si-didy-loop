@@ -1,3 +1,5 @@
 node_modules/
 konomi-out/
 *.witnessbak
+local-dna/
+konomi-out/

@@ -13,5 +13,10 @@
     "mutation": "< → <=",
     "snippet": "while (this.recent.some((r) => { const d = wrap(theta - r); return d < 0.06 || d > TAU - 0",
     "reason": "equivalent: the two `<` here are a measure-zero float boundary (d == 0.06, never hit) and the stall-guard iteration cap (g reaches 1 when the guard fires, never near 6) — neither differs on any reached input"
+  },
+  {
+    "mutation": ">= → >",
+    "snippet": "const c = Number.isFinite(cycle) && cycle >= 0 ? Math.floor(cycle) : 0;",
+    "reason": "boundary identity: >= and > differ only at cycle === 0, and both arms then yield the same 0 (Math.floor(0) on one side, the sanitised default on the other). No input separates them."
   }
 ]

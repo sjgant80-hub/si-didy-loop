@@ -8,4 +8,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      # si-didy-loop.mjs imports its sibling missig — a bare clone has no siblings, and this CI
+      # has been red since July for exactly that. The gate must be able to RUN to mean anything.
+      - run: git clone --depth 1 https://github.com/sjgant80-hub/missig.git ../missig
       - run: node --test
