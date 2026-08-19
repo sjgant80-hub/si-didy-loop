@@ -35,6 +35,12 @@ for (let i = 0; i < 3; i++) {
 }
 
 const dream = run('deepen-run.mjs', ['--dream']);
+
+// the course never closes: one drill per night keeps every mastery warm and, once complete,
+// each night's drill IS an S6 expansion — a new proposal from the dream shadow, for the
+// key-holder's morning. Expansion proposes; the human disposes.
+const course = run('train.mjs', ['--all']);
+
 const mind = run('export-mind.mjs');
 
 const line = [
@@ -43,6 +49,7 @@ const line = [
   study.ok ? study.out.trim() : 'STUDY FAILED:\n' + study.out.trim(),
   ...sweeps,
   dream.ok ? dream.out.split('\n')[0] : 'DREAM FAILED',
+  course.ok ? course.out.trim().split('\n').filter(l => /MASTERED|not yet|proposed|now in front/.test(l)).join('\n') : 'COURSE DRILL FAILED',
   mind.ok ? mind.out.trim() : 'MIND EXPORT FAILED',
   '',
 ].join('\n');

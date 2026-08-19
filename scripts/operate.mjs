@@ -280,6 +280,22 @@ async function sweep() {
   // the market goes LAST: it lists what the forge made THIS sweep too, so the release door
   // never carries a count one build behind the truth
   console.log(`── fallworld-market ──`);
+  if (auto('fallworld-market', 'post-content')) {
+    // posting is AUTO (2026-08-19 correction): the post rides the OUTBOX for the sanctioned
+    // rail — it waits for the rail (one-time setup, the human 10%), never for a signature
+    const outbox = readJson(join(DNA_DIR, 'outbox.json'), { kind: 'sanctioned-rail-outbox', note: 'posts wait for the RAIL, never for a signature', posts: [] });
+    const latest = state.builds.at(-1);
+    if (latest && !outbox.posts.some(p => p.about === latest.kpid)) {
+      outbox.posts.push({
+        about: latest.kpid, gradedAt: at,
+        hook: `Built overnight, owned forever: ${latest.slug.replace(/-/g, ' ')}.`,
+        demoUrl: 'https://sjgant80-hub.github.io/sididy-catalogue/builds/' + latest.slug + '.html',
+        cta: 'Open it — one file, offline, yours.',
+      });
+      writeJson(join(DNA_DIR, 'outbox.json'), outbox);
+      console.log(`   post drafted to the outbox (${outbox.posts.length} waiting on the rail — one-time Graph API setup is the human 10%)`);
+    }
+  }
   if (auto('fallworld-market', 'run-listings')) {
     const perOrgan = {};
     for (const b of state.builds) for (const o of b.organs) perOrgan[o] = (perOrgan[o] || 0) + 1;

@@ -33,6 +33,7 @@ export const STREAMS = [
     auto: [
       A('run-listings', 'track'), A('catalogue-builds', 'track'), A('manage-showcase', 'track'),
       A('prep-marketplace-ops', 'draft'), A('track-inventory', 'track'),
+      A('post-content', 'post', 'sanctioned rail only — post, measure, adjust, post better'),
     ],
     key: [
       K('real-money-sale', 'pay', { money: true }, COUNSEL),
@@ -111,6 +112,7 @@ export const STREAMS = [
       A('identify-opportunity', 'propose', 'grounded in the estate index'), A('design-offering', 'draft'),
       A('build-artifacts', 'produce'), A('setup-internal-economy', 'mint-internal'),
       A('draft-everything', 'draft', 'words, unsent'),
+      A('post-content', 'post', 'sanctioned rail only — the venture markets itself; going LIVE stays a door'),
     ],
     key: [
       K('open-payment-rail', 'payment-rail', { money: true }, COUNSEL),

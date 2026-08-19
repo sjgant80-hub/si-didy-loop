@@ -34,6 +34,10 @@ export const AUTO_KINDS = Object.freeze([
   'validate',          // run the gates
   'mint-internal',     // mint into the baby ledger (internal KONO, not money)
   'draft',             // draft a proposal, outreach, scoping — words, unsent
+  'post',              // CONTENT on the sanctioned rail (Graph API / approved automation) — the
+                       // learn-till-win loop only closes if si-didy can post, measure, adjust,
+                       // and post better. Corrected 2026-08-19: posting is AUTO, not a door.
+                       // Venture GO-LIVE stays 'publish-external' — a door, as ever.
   'track',             // update the pipeline and the scoreboard
   'propose',           // propose a venture or a next move
   'remember',          // deepen the graph

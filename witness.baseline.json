@@ -23,5 +23,10 @@
     "mutation": ">= → >",
     "snippet": "const n = (v) => (Number.isFinite(v) && v >= 0) ? v : 0;",
     "reason": "boundary identity: >= and > differ only at v === 0, and both arms then yield the same 0 (the value itself on one side, the sanitised default on the other). No input separates them."
+  },
+  {
+    "mutation": "< → <=",
+    "snippet": "return { ok: false, why: idx < p.stage",
+    "reason": "guard-shadowed identity: this ternary runs only inside the idx !== p.stage branch, so idx === p.stage is unreachable and < and <= cannot be separated by any input. The comparison only chooses which refusal sentence is spoken."
   }
 ]
