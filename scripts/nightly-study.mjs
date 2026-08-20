@@ -50,6 +50,9 @@ const course = run('train.mjs', ['--all']);
 
 const mind = run('export-mind.mjs');
 
+// the last word of every night: one page for the morning, ending in ONE first action
+const brief = run('brief.mjs');
+
 const line = [
   `── ${stamp}`,
   seed.ok ? seed.out.trim() : 'SEED FAILED:\n' + seed.out.trim(),
@@ -60,6 +63,7 @@ const line = [
   posted.out.trim().split('\n').slice(-1)[0],
   course.ok ? course.out.trim().split('\n').filter(l => /MASTERED|not yet|proposed|now in front/.test(l)).join('\n') : 'COURSE DRILL FAILED',
   mind.ok ? mind.out.trim() : 'MIND EXPORT FAILED',
+  brief.ok ? brief.out.trim() : 'BRIEF FAILED',
   '',
 ].join('\n');
 appendFileSync(LOG, line + '\n');
