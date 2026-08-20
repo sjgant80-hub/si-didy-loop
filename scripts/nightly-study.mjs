@@ -36,6 +36,13 @@ for (let i = 0; i < 3; i++) {
 
 const dream = run('deepen-run.mjs', ['--dream']);
 
+// the sanctioned rail: measure yesterday's posts (the learn half), then post the next graded
+// draft the window allows. Posting is AUTO (the 2026-08-19 correction); until the one-time
+// rail setup both steps refuse loudly and the night continues — posts wait for the RAIL,
+// never for a signature.
+const measure = run('rail.mjs', ['--measure']);
+const posted = run('rail.mjs', ['--post-next']);
+
 // the course never closes: one drill per night keeps every mastery warm and, once complete,
 // each night's drill IS an S6 expansion — a new proposal from the dream shadow, for the
 // key-holder's morning. Expansion proposes; the human disposes.
@@ -49,6 +56,8 @@ const line = [
   study.ok ? study.out.trim() : 'STUDY FAILED:\n' + study.out.trim(),
   ...sweeps,
   dream.ok ? dream.out.split('\n')[0] : 'DREAM FAILED',
+  measure.out.trim().split('\n').slice(-2).join('\n'),
+  posted.out.trim().split('\n').slice(-1)[0],
   course.ok ? course.out.trim().split('\n').filter(l => /MASTERED|not yet|proposed|now in front/.test(l)).join('\n') : 'COURSE DRILL FAILED',
   mind.ok ? mind.out.trim() : 'MIND EXPORT FAILED',
   '',

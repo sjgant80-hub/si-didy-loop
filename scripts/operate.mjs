@@ -24,6 +24,7 @@ import { webcrypto } from 'node:crypto';
 
 import { classify, signableItem, makeQueue, prepare, approve, executable, scoreboard } from '../operator.mjs';
 import { MANDATE, STREAMS, actionFor, coverage } from '../scope.mjs';
+import { gradePost } from '../course.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const DNA_DIR = join(here, '..', 'local-dna');
@@ -286,14 +287,18 @@ async function sweep() {
     const outbox = readJson(join(DNA_DIR, 'outbox.json'), { kind: 'sanctioned-rail-outbox', note: 'posts wait for the RAIL, never for a signature', posts: [] });
     const latest = state.builds.at(-1);
     if (latest && !outbox.posts.some(p => p.about === latest.kpid)) {
-      outbox.posts.push({
+      const draft = {
         about: latest.kpid, gradedAt: at,
         hook: `Built overnight, owned forever: ${latest.slug.replace(/-/g, ' ')}.`,
         demoUrl: 'https://sjgant80-hub.github.io/sididy-catalogue/builds/' + latest.slug + '.html',
         cta: 'Open it — one file, offline, yours.',
-      });
+      };
+      // the content gate grades the draft before the rail may carry it (no money claim, so
+      // the truth object is empty of prices — the gate still checks hook, demo, and CTA)
+      draft.score = gradePost(draft, { rentMo: 0, once: 0 });
+      outbox.posts.push(draft);
       writeJson(join(DNA_DIR, 'outbox.json'), outbox);
-      console.log(`   post drafted to the outbox (${outbox.posts.length} waiting on the rail — one-time Graph API setup is the human 10%)`);
+      console.log(`   post drafted + graded ${draft.score.toFixed(2)} → outbox (${outbox.posts.length} waiting on the rail)`);
     }
   }
   if (auto('fallworld-market', 'run-listings')) {
