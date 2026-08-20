@@ -48,6 +48,12 @@ const posted = run('rail.mjs', ['--post-next']);
 // key-holder's morning. Expansion proposes; the human disposes.
 const course = run('train.mjs', ['--all']);
 
+// THE WISP WIRE: tonight's proposals become held possibilities, and the local wisp sits one
+// sealed exam — a verified collapse stands in the field, a failure is discarded and re-sat
+// another night with a sharpened prompt. Sovereign by construction: Ollama or a loud stop.
+const wispSeed = run('wisp-collapse.mjs', ['--seed']);
+const wisp = run('wisp-collapse.mjs', ['--collapse']);
+
 const mind = run('export-mind.mjs');
 
 // the last word of every night: one page for the morning, ending in ONE first action
@@ -62,6 +68,8 @@ const line = [
   measure.out.trim().split('\n').slice(-2).join('\n'),
   posted.out.trim().split('\n').slice(-1)[0],
   course.ok ? course.out.trim().split('\n').filter(l => /MASTERED|not yet|proposed|now in front/.test(l)).join('\n') : 'COURSE DRILL FAILED',
+  wispSeed.out.trim().split('\n').slice(-2).join('\n'),
+  wisp.out.trim().split('\n').filter(l => /collapsing|STANDS|✗|nothing un-collapsed/.test(l)).join('\n') || 'WISP: no output',
   mind.ok ? mind.out.trim() : 'MIND EXPORT FAILED',
   brief.ok ? brief.out.trim() : 'BRIEF FAILED',
   '',
