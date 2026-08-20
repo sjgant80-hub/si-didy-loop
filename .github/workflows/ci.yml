@@ -11,4 +11,6 @@ jobs:
       # si-didy-loop.mjs imports its sibling missig — a bare clone has no siblings, and this CI
       # has been red since July for exactly that. The gate must be able to RUN to mean anything.
       - run: git clone --depth 1 https://github.com/sjgant80-hub/missig.git ../missig
+      # wispwire.test.mjs proves its exams against the REAL field kernel — the same sibling rule
+      - run: git clone --depth 1 https://github.com/sjgant80-hub/generative-estate.git ../generative-estate
       - run: node --test

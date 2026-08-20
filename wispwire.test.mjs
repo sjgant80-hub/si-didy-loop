@@ -3,10 +3,13 @@
 // exams are proven against the actual verify() they will face, not a copy of it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
+import { join, dirname } from 'node:path';
 import { KAPPA, TEMPLATES, nameHash, specFromProposal, redactSpec, promptFor, extractCode } from './wispwire.mjs';
 
-const estate = await import(pathToFileURL('C:/Users/sjgan/Downloads/generative-estate/estate.mjs').href);
+// the field kernel is the SIBLING checkout, same convention as missig and the forge — CI clones
+// it next door, and a machine without it cannot honestly run this suite
+const estate = await import(pathToFileURL(join(dirname(fileURLToPath(import.meta.url)), '..', 'generative-estate', 'estate.mjs')).href);
 
 const PROPOSAL = () => ({ move: 'soundcheck kiosks licensed per venue for structural surveys', grounds: ['soundcheck', 'the-ear', 'memory:airgap'], proposesOnly: true });
 
