@@ -16,7 +16,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { specFromProposal, redactSpec, promptFor, extractCode } from '../wispwire.mjs';
+import { specFromProposal, specFromGap, redactSpec, promptFor, extractCode, TEMPLATES } from '../wispwire.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const DNA = join(here, '..', 'local-dna');
@@ -77,6 +77,22 @@ async function ollama(model, prompt, timeoutMs) {
   });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return (await res.json()).response;
+}
+
+if (args[0] === '--fill') {
+  // gap-fill: hold a template's exam directly — the ground is a remembered estate defect
+  const fn = args[1];
+  const ground = args.slice(2).join(' ');
+  const s = specFromGap(fn, ground);
+  if (!s.ok) {
+    console.error(s.why);
+    console.error('templates carried: ' + TEMPLATES.map(t => t.fn).join(', '));
+    process.exit(1);
+  }
+  const d = estate.define(field, s.spec);
+  saveField();
+  console.log(`◇ held: ${s.why}${d.built ? ' (already built — content-addressed)' : ''}`);
+  process.exit(0);
 }
 
 if (args[0] === '--collapse') {

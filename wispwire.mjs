@@ -19,6 +19,8 @@
 //     STORY of the spec; it never touches the exam.
 //   · A thin proposal is refused: no grounds, no spec. Emergence without grounds is a guess.
 
+import { GAP_TEMPLATES } from './gaptemplates.mjs';
+
 export const KAPPA = (Math.sqrt(5) - 1) / 2;
 
 const str = (v) => typeof v === 'string' ? v : '';
@@ -38,7 +40,7 @@ export const nameHash = (s) => {
 // garbage input contradicts its own name — the live run proved it. Only the non-money grader
 // sits at κ.
 const T = (fn, teaches, description, inputs, verify, threshold) => ({ fn, teaches, description, inputs, verify, threshold: threshold ?? 1 });
-export const TEMPLATES = Object.freeze([
+const CORE_TEMPLATES = [
   T('bundleQuote', 'price a two-tool bundle',
     'Return {ok:true, sum, discount, price} for a paired-offer quote. All money is INTEGER PENCE. sum = a + b. discount = Math.round(sum * rate). price = sum - discount. If a or b is not a non-negative integer, or rate is not a finite number in [0,1], return exactly {ok:false}.',
     ['a', 'b', 'rate'],
@@ -89,8 +91,10 @@ export const TEMPLATES = Object.freeze([
       { in: [1.2], out: { ok: false } },
       { in: [NaN], out: { ok: false } },
     ], KAPPA),
-]);
-for (const t of TEMPLATES) { Object.freeze(t.inputs); Object.freeze(t.verify); for (const v of t.verify) { Object.freeze(v.in); Object.freeze(v.out); Object.freeze(v); } Object.freeze(t); }
+];
+// the repertoire = the founding five + the ten gap exams the didys mined from remembered defects
+export const TEMPLATES = Object.freeze([...CORE_TEMPLATES, ...GAP_TEMPLATES]);
+for (const t of CORE_TEMPLATES) { Object.freeze(t.inputs); Object.freeze(t.verify); for (const v of t.verify) { Object.freeze(v.in); Object.freeze(v.out); Object.freeze(v); } Object.freeze(t); }
 
 /**
  * An S6 proposal becomes a spec for the field. The proposal picks the template (deterministic —
@@ -112,6 +116,28 @@ export function specFromProposal(proposal) {
     spec: {
       name: `${t.fn}_${suffix}`,
       description: `${t.description} Born of si-didy's proposal: "${move.slice(0, 140)}" — grounds: ${grounds.slice(0, 4).join(', ')}.`,
+      inputs: [...t.inputs],
+      verify: t.verify.map(v => ({ in: [...v.in], out: v.out })),
+      threshold: t.threshold,
+    },
+  };
+}
+
+/**
+ * A GAP-FILL spec: the template examined directly, because the gap it closes is already known —
+ * a remembered estate defect is ground enough. Deterministic name; the exam is the template's own.
+ */
+export function specFromGap(fnName, groundedIn) {
+  const t = TEMPLATES.find(x => x.fn === str(fnName));
+  if (!t) return { ok: false, why: `"${str(fnName) || '(unnamed)'}" is not a template this wire carries` };
+  const ground = str(groundedIn).trim();
+  if (ground.length < 10) return { ok: false, why: 'a gap-fill needs its ground said — which remembered defect does this close?' };
+  return {
+    ok: true,
+    why: `gap-fill: ${t.fn} (${t.teaches}) — ${ground.slice(0, 60)}`,
+    spec: {
+      name: `${t.fn}_${nameHash('gap:' + t.fn)}`,
+      description: `${t.description} Gap-fill: ${ground.slice(0, 140)}.`,
       inputs: [...t.inputs],
       verify: t.verify.map(v => ({ in: [...v.in], out: v.out })),
       threshold: t.threshold,
