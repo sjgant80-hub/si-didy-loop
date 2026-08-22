@@ -13,10 +13,15 @@
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { railReady, postable, buildPost, buildMetrics, redact, readMetrics, learn, KAPPA, GRAPH } from '../rail.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
+
+// THE SOVEREIGNTY GATE before the rail: every post is scrubbed of model-tells (which local model
+// wrote it) by fallscrub, linked by observation from the sibling checkout. No scrubber, no post —
+// posting unscrubbed would leak the stack, which is the whole thing the rail exists to protect.
+const FALLSCRUB = join(here, '..', '..', 'fallscrub', 'scrub.mjs');
 const DNA = join(here, '..', 'local-dna');
 const CONFIG_F = join(DNA, 'rail-config.json');
 const OUTBOX_F = join(DNA, 'outbox.json');
@@ -83,6 +88,20 @@ if (args[0] === '--post-next') {
   const post = candidates[0];
   const may = postable(post, config, history.sent, Date.now());
   if (!may.ok) { console.log('not posting: ' + may.why); process.exit(0); }
+
+  // scrub the post of model-tells before it can go — no scrubber, no post
+  if (!existsSync(FALLSCRUB)) {
+    console.error('STOP: fallscrub is not checked out next door (' + FALLSCRUB + ').');
+    console.error('The rail will not post text it has not scrubbed of model-tells — clone fallscrub beside si-didy-loop first.');
+    process.exit(1);
+  }
+  const { scrub } = await import(pathToFileURL(FALLSCRUB).href);
+  let scrubbed = 0;
+  for (const f of ['hook', 'reveal', 'cta']) {
+    if (typeof post[f] === 'string') { const r = scrub(post[f]); scrubbed += r.report.chatTokens + r.report.selfId + r.report.boilerplate + r.report.wordSwaps + r.report.unicode; post[f] = r.text; }
+  }
+  console.log(scrubbed ? `scrubbed ${scrubbed} model-tell(s) from the post before posting` : 'post carried no model-tells');
+
   const req = buildPost(post, config);
   console.log('posting: ' + JSON.stringify(redact(req).body.message).slice(0, 120) + '…');
   const res = await graphFetch(req);
