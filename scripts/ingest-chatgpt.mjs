@@ -40,6 +40,24 @@ if (/\.zip$/i.test(src)) {
     console.error('could not read conversations.json out of the zip (' + (e.message || e) + ') — unzip it yourself and pass conversations.json directly');
     process.exit(1);
   }
+} else if (/\.html?$/i.test(src)) {
+  // the chat.html export embeds the same conversations array as `var jsonData = [...]` —
+  // bracket-match it out (string-aware), because the array itself contains ']' characters everywhere
+  const html = readFileSync(src, 'utf8');
+  const at = html.indexOf('var jsonData');
+  if (at < 0) { console.error('no embedded jsonData found — is this really the ChatGPT chat.html export?'); process.exit(1); }
+  const start = html.indexOf('[', at);
+  let depth = 0, inStr = false, esc = false, end = -1;
+  for (let i = start; i < html.length; i++) {
+    const ch = html[i];
+    if (inStr) { if (esc) esc = false; else if (ch === '\\') esc = true; else if (ch === '"') inStr = false; continue; }
+    if (ch === '"') inStr = true;
+    else if (ch === '[') depth++;
+    else if (ch === ']') { depth--; if (depth === 0) { end = i; break; } }
+  }
+  if (end < 0) { console.error('embedded jsonData never closes — file truncated?'); process.exit(1); }
+  raw = html.slice(start, end + 1);
+  console.log('extracted ' + (raw.length / 1048576).toFixed(1) + 'MB of conversation JSON from the HTML export');
 } else {
   raw = readFileSync(src, 'utf8');
 }

@@ -98,12 +98,14 @@ for (const f of readdirSync(MEMORY_DIR)) {
 let chatCount = 0, chatEdges = 0;
 for (const dir of CHAT_DIRS) {
   let files = [];
-  try { files = readdirSync(dir).filter(f => f.endsWith('.jsonl')); } catch { continue; }
+  try { files = readdirSync(dir).filter(f => f.endsWith('.jsonl') || f.endsWith('.md')); } catch { continue; }
   for (const f of files) {
     const path = join(dir, f);
     let size = 0;
     try { size = statSync(path).size; } catch { continue; }
-    if (size < 10000) continue;                            // an empty session teaches nothing
+    // a CC session under 10KB is bookkeeping noise; an imported chat (.md) is already distilled —
+    // even a short one is a real conversation, so its floor is only "not empty".
+    if (size < (f.endsWith('.md') ? 300 : 10000)) continue;
     const counts = new Map();
     const fd = openSync(path, 'r');
     const buf = Buffer.alloc(1 << 20);
