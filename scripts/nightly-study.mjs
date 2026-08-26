@@ -44,6 +44,17 @@ const soul = (() => {
   return { out: (r.stdout || '') + (r.stderr || ''), ok: r.status === 0 };
 })();
 
+// THE LADDER REFRESHES NIGHTLY: evidence rescan (incremental — only new repos cost calls),
+// tiers recomputed, the world rebuilt. It sat twelve days stale and every surface reading it
+// silently under-counted the proven work — a canonical source that is never refreshed is just
+// a hand-typed list with extra steps.
+const FW = 'C:/Users/sjgan/Downloads/fw-check';
+const fw = (script) => {
+  const r = spawnSync(process.execPath, [FW + '/scripts/' + script], { encoding: 'utf8', cwd: FW, timeout: 30 * 60 * 1000 });
+  return { out: (r.stdout || '') + (r.stderr || ''), ok: r.status === 0 };
+};
+const ladder = [fw('scan-ci.mjs'), fw('scan-tiers.mjs'), fw('build-world.mjs')];
+
 // THE MEASURES SIT NIGHTLY: seam-flux + the twelve-powers sweep, so the morning log carries how the
 // seam conducted and what became sellable — the measures move or they were theatre.
 const seam = run('seam-cli.mjs');
