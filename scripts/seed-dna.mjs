@@ -29,6 +29,9 @@ const PROJECTS_DIR = 'C:/Users/sjgan/.claude/projects';
 const CHAT_DIRS = process.argv.includes('--chats')
   ? [process.argv[process.argv.indexOf('--chats') + 1]]
   : (() => { try { return readdirSync(PROJECTS_DIR).map(d => join(PROJECTS_DIR, d)); } catch { return []; } })();
+// imported vendor chats (ChatGPT via ingest-chatgpt.mjs) always join the DNA when present — the
+// reasoning history predating the estate is part of the same mind. local-dna/ is gitignored.
+{ const gpt = join(here, '..', 'local-dna', 'chatgpt-chats'); if (existsSync(gpt)) CHAT_DIRS.push(gpt); }
 
 const nodes = new Map();   // id -> { id, type, meta }
 const edges = [];          // { from, to, type, weight, meta }
