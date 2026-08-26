@@ -22,7 +22,7 @@ import { execFileSync, execSync } from 'node:child_process';
 import { normalize, makeArchive, ingest, archiveAll } from 'file:///C:/Users/sjgan/Downloads/offramp-v2/kernel/offramp.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const OUT = join(here, '..', 'local-dna', 'chatgpt-chats');
+let OUT = join(here, '..', 'local-dna', 'chatgpt-chats'); // switched to <vendor>-chats after detection
 const src = process.argv[2];
 if (!src || !existsSync(src)) {
   console.error('usage: node scripts/ingest-chatgpt.mjs <export.zip | conversations.json>');
@@ -65,7 +65,12 @@ let parsed;
 try { parsed = JSON.parse(raw); } catch (e) { console.error('that file is not valid JSON — is it really the ChatGPT export?'); process.exit(1); }
 
 // ── 2 · normalize through the gated adapter + dedupe ─────────────────────────────────────────────
-const envelopes = normalize('chatgpt', parsed);
+// vendor AUTO-DETECTED from the shape: claude.ai exports {chat_messages}, ChatGPT exports {mapping}
+const first = Array.isArray(parsed) ? parsed.find(Boolean) : null;
+const vendor = first && Array.isArray(first.chat_messages) ? 'claude' : 'chatgpt';
+console.log('vendor detected: ' + vendor);
+const envelopes = normalize(vendor, parsed);
+OUT = join(here, '..', 'local-dna', vendor + '-chats');
 const archive = makeArchive();
 const res = ingest(archive, envelopes);
 const kept = archiveAll(archive);
@@ -78,12 +83,12 @@ const slug = (s) => String(s || 'untitled').toLowerCase().replace(/[^a-z0-9]+/g,
 let written = 0;
 withText.forEach((env, i) => {
   const name = String(i + 1).padStart(4, '0') + '-' + slug(env.title) + '.md';
-  const body = '# ' + (env.title || '(untitled)') + '\n\nsource: chatgpt · imported ' + new Date().toISOString().slice(0, 10) + '\n\n' +
+  const body = '# ' + (env.title || '(untitled)') + '\n\nsource: ' + vendor + ' · imported ' + new Date().toISOString().slice(0, 10) + '\n\n' +
     env.messages.map((m) => '**' + m.role + ':** ' + m.text).join('\n\n');
   writeFileSync(join(OUT, name), body);
   written++;
 });
-console.log(`${written} conversation file(s) → local-dna/chatgpt-chats/ (gitignored, never leaves this machine)`);
+console.log(`${written} conversation file(s) → local-dna/` + vendor + `-chats/ (gitignored, never leaves this machine)`);
 
 // ── 4 · rebuild the DNA so the fan sees them ─────────────────────────────────────────────────────
 try {
@@ -93,4 +98,4 @@ try {
   console.error('DNA rebuild failed — run node scripts/seed-dna.mjs by hand: ' + (e.message || e).split('\n')[0]);
   process.exit(1);
 }
-console.log('DONE — sididy now associates over your ChatGPT history.');
+console.log('DONE — sididy now associates over your ' + vendor + ' history.');
