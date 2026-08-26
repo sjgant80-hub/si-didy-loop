@@ -1,0 +1,7 @@
+[
+ {
+  "mutation": "< → <=",
+  "snippet": "risen < KAPPA_FLOOR ? 'the seam is below the κ floor — approvals are not becoming lit; tur",
+  "reason": "branch-order equivalent: when risen === KAPPA_FLOOR the first ternary branch (risen >= KAPPA_FLOOR) has already matched, so this comparison is never evaluated at the only value where < and <= differ; NaN falls through identically under both operators."
+ }
+]

@@ -36,6 +36,19 @@ for (let i = 0; i < 3; i++) {
 
 const dream = run('deepen-run.mjs', ['--dream']);
 
+// THE SOUL DIGESTS THE DAY: the chat-soul at C:/Users/sjgan/si-didy learns from transcripts only
+// when sessions.json is regenerated — left by hand it staled for weeks while the estate worked.
+// Now every night the soul wakes with yesterday's reasoning already compressed into it.
+const soul = (() => {
+  const r = spawnSync(process.execPath, ['C:/Users/sjgan/si-didy/ingest-sessions.mjs', '--write'], { encoding: 'utf8', cwd: 'C:/Users/sjgan/si-didy', timeout: 30 * 60 * 1000 });
+  return { out: (r.stdout || '') + (r.stderr || ''), ok: r.status === 0 };
+})();
+
+// THE MEASURES SIT NIGHTLY: seam-flux + the twelve-powers sweep, so the morning log carries how the
+// seam conducted and what became sellable — the measures move or they were theatre.
+const seam = run('seam-cli.mjs');
+const crawl = run('twelve-crawl-cli.mjs');
+
 // the sanctioned rail: measure yesterday's posts (the learn half), then post the next graded
 // draft the window allows. Posting is AUTO (the 2026-08-19 correction); until the one-time
 // rail setup both steps refuse loudly and the night continues — posts wait for the RAIL,
