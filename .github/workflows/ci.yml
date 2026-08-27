@@ -14,3 +14,15 @@ jobs:
       # wispwire.test.mjs proves its exams against the REAL field kernel — the same sibling rule
       - run: git clone --depth 1 https://github.com/sjgant80-hub/generative-estate.git ../generative-estate
       - run: node --test
+
+      # ⚑ Pinned. An unpinned gate is a gate somebody else can change.
+      - name: witness — the seam law (must be CLEAN)
+        run: |
+          git clone --depth 1 --branch v0.6 https://github.com/sjgant80-hub/witness.git /tmp/witness
+          node /tmp/witness/witness.mjs mutate scripts/seam.mjs             --timeout 60000 --cap 600 --baseline scripts/seam.witness.baseline.json             --test node --test scripts/seam.test.mjs
+      - name: witness — the twelve-powers law (must be CLEAN)
+        run: |
+          node /tmp/witness/witness.mjs mutate scripts/twelve.mjs             --timeout 60000 --cap 800             --test node --test scripts/twelve.test.mjs
+      - name: witness — the crawl law (must be CLEAN)
+        run: |
+          node /tmp/witness/witness.mjs mutate scripts/twelve-crawl.mjs             --timeout 60000 --cap 800             --test node --test scripts/twelve-crawl.test.mjs
