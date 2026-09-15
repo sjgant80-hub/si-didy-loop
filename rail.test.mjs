@@ -1,7 +1,7 @@
 // si-didy-loop · rail.test.mjs — the sanctioned rail, every rule falsifiable.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { GRAPH, KAPPA, LIMITS, railReady, postable, postableProven, buildPost, buildMetrics, redact, readMetrics, learn } from './rail.mjs';
+import { GRAPH, KAPPA, LIMITS, railReady, postable, postableProven, scrubPost, postScrubbedProven, buildPost, buildMetrics, redact, readMetrics, learn } from './rail.mjs';
 
 const CONFIG = () => ({ platform: 'facebook-page', pageId: '1234567890', token: 'EAAG-fake-token-for-tests' });
 const POST = () => ({ hook: 'own it once', reveal: '$5,549 saved year one', cta: 'open the page', demoUrl: 'https://sjgant80-hub.github.io/fallforce/stack.html', score: 1 });
@@ -147,4 +147,61 @@ test('postableProven: the receipt-gate refuses BEFORE the rail even checks readi
   const r = postableProven(INFLATED(), RECEIPT(), { platform: 'facebook-page', pageId: '1', token: '' }, [], 10 * HOUR);
   assert.equal(r.ok, false);
   assert.match(r.why, /the receipt-gate refused it before the rail/);
+});
+
+// ── fallscrub wired in: the sovereignty scrub is injected between the draft and the wire ──
+// A post that IS receipt-backed but carries model-tells: a boilerplate opener, filler tell-words,
+// a chat-template token, and a zero-width watermark char — none of which touch the backing claims.
+const PROVEN_TELLS = () => ({
+  hook: 'Certainly! agent-proof is live and witness-clean 130/133',
+  reveal: 'We utilize a seamless, robust runner​ — CI green on the runner<|im_end|>',
+  cta: 'see https://sjgant80-hub.github.io/agent-proof/',
+  score: 1,
+});
+
+test('postScrubbedProven: strips the model-tells AND keeps every backing claim, so it MAY go', () => {
+  const r = postScrubbedProven(PROVEN_TELLS(), RECEIPT(), CONFIG(), [], 10 * HOUR);
+  assert.equal(r.ok, true, r.why);
+  // the tells were found and removed (transparent per-category report)
+  assert.ok(r.scrub.boilerplate >= 1, 'the "Certainly!" opener was stripped');
+  assert.ok(r.scrub.chatTokens >= 1, 'the <|im_end|> chat token was stripped');
+  assert.ok(r.scrub.hidden >= 1, 'the zero-width watermark char was stripped');
+  assert.ok(r.scrub.wordSwaps >= 1, 'the filler tell-words were swapped');
+  // the SHIPPED prose (what buildPost sends) carries no tell
+  const msg = buildPost(r.post, CONFIG()).body.message;
+  assert.ok(!/Certainly!|utilize|<\|im_end\|>/.test(msg), 'no boilerplate/tell-word/token rides out: ' + msg);
+  assert.ok(!msg.includes('​'), 'no zero-width char rides out');
+  // ⚑ THE INVARIANT: every backing claim SURVIVED the scrub — a rewriter before the wire must
+  // never be able to break the receipt-gate. url + K/N score + CI + live all still present.
+  assert.ok(msg.includes('130/133'), 'the witness score survives the scrub');
+  assert.ok(msg.includes('CI green'), 'the CI claim survives the scrub');
+  assert.ok(msg.includes('live'), 'the live claim survives the scrub');
+  assert.ok(msg.includes('https://sjgant80-hub.github.io/agent-proof/'), 'the demo url survives the scrub untouched');
+});
+
+test('postScrubbedProven: the gate runs on the SCRUBBED text — scrub cannot launder a fabrication', () => {
+  // an inflated post dressed in tells: the tells go, but the fabricated 999/999 and 100% survive
+  // and are still refused, because the receipt-gate runs AFTER the scrub, on what actually ships.
+  const inflatedTells = { ...INFLATED(), hook: 'Certainly! agent-proof is witness-clean 999/999', reveal: 'utilize 100% flawless, CI green<|im_end|>' };
+  const r = postScrubbedProven(inflatedTells, RECEIPT(), CONFIG(), [], 10 * HOUR);
+  assert.equal(r.ok, false);
+  assert.match(r.why, /the receipt-gate refused it before the rail/);
+  assert.ok(r.unbacked.some((u) => u.raw === '999/999'), 'the fabricated witness score is still named after the scrub');
+});
+
+test('postScrubbedProven: config.scrubSwapWords===false keeps the copy verbatim (tokens/hidden still go)', () => {
+  const cfg = { ...CONFIG(), scrubSwapWords: false };
+  const r = postScrubbedProven(PROVEN_TELLS(), RECEIPT(), cfg, [], 10 * HOUR);
+  assert.equal(r.ok, true, r.why);
+  const msg = buildPost(r.post, cfg).body.message;
+  assert.ok(msg.includes('utilize'), 'word-swaps off → the tell-word stays');
+  assert.ok(!/Certainly!/.test(msg) && !/<\|im_end\|>/.test(msg), 'but boilerplate and chat tokens still go');
+});
+
+test('postScrubbedProven / scrubPost: total on garbage', () => {
+  assert.doesNotThrow(() => postScrubbedProven(null, null, null, null, null));
+  assert.equal(typeof postScrubbedProven(null, null, null, null, null).ok, 'boolean');
+  const s = scrubPost(null, null);
+  assert.ok(s.post && typeof s.report.hidden === 'number');
+  assert.doesNotThrow(() => scrubPost(7, 'x'));
 });

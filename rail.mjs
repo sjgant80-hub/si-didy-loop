@@ -20,6 +20,7 @@
 // go-live — those stay doors.
 
 import { gatePost } from './receiptgate.mjs';
+import { scrub } from './scrub.mjs';
 
 export const GRAPH = 'https://graph.facebook.com/v21.0/';
 export const KAPPA = (Math.sqrt(5) - 1) / 2;
@@ -135,6 +136,45 @@ export function postableProven(post, receipt, config, history, nowMs) {
   const proof = gatePost(post, receipt);
   if (!proof.ok) return { ok: false, why: 'the receipt-gate refused it before the rail: ' + proof.why, unbacked: proof.unbacked };
   return postable(post, config, history, nowMs);
+}
+
+/**
+ * The sovereignty scrub applied to output ([[fallscrub]]), injected between the draft and the wire:
+ * strip every tell of WHICH model wrote the prose — the hidden-watermark channel (zero-width, bidi,
+ * variation selectors, the Unicode TAGS block that can smuggle a whole hidden string), homoglyphs,
+ * chat-template tokens, self-identification, boilerplate, filler tell-words, and cosmetic unicode —
+ * deterministically, with a transparent per-category report. Only the PROSE fields (hook/reveal/cta)
+ * are scrubbed; claim tokens (urls, K/N scores, percents, "CI", "live") are not in the tell set, and
+ * the receipt-gate re-checks them on the scrubbed text anyway. swapWords is on unless
+ * config.scrubSwapWords === false (some operators want verbatim copy).
+ */
+export function scrubPost(post, config) {
+  const p = obj(post) || {};
+  const c = obj(config) || {};
+  const opts = { swapWords: c.scrubSwapWords !== false };
+  const report = { chatTokens: 0, selfId: 0, boilerplate: 0, wordSwaps: 0, hidden: 0, homoglyphs: 0, cosmetic: 0 };
+  const out = { ...p };
+  for (const f of ['hook', 'reveal', 'cta']) {
+    if (typeof p[f] !== 'string') continue;
+    const r = scrub(p[f], opts);
+    out[f] = r.text;
+    for (const k in report) report[k] += r.report[k];
+  }
+  return { post: out, report };
+}
+
+/**
+ * The SCRUBBED-AND-PROVEN rail — fallscrub injected between the draft and the wire, in the only
+ * honest order: SCRUB the prose first, then run the receipt-gate ON THE SCRUBBED TEXT (so a scrub
+ * that ever altered a backing claim would be caught and refused here, never shipped), then the
+ * rate/score discipline. Returns the decision PLUS the scrubbed post to build from, so
+ * buildPost(result.post, config) ships exactly the bytes that were both tell-scrubbed AND
+ * claim-gated. No receipt, no post; and no model-tell rides out on a post that does go.
+ */
+export function postScrubbedProven(post, receipt, config, history, nowMs) {
+  const scrubbed = scrubPost(post, config);
+  const decision = postableProven(scrubbed.post, receipt, config, history, nowMs);
+  return { ...decision, post: scrubbed.post, scrub: scrubbed.report };
 }
 
 export default postable;
