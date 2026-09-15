@@ -1,7 +1,7 @@
 // si-didy-loop · rail.test.mjs — the sanctioned rail, every rule falsifiable.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { GRAPH, KAPPA, LIMITS, railReady, postable, buildPost, buildMetrics, redact, readMetrics, learn } from './rail.mjs';
+import { GRAPH, KAPPA, LIMITS, railReady, postable, postableProven, buildPost, buildMetrics, redact, readMetrics, learn } from './rail.mjs';
 
 const CONFIG = () => ({ platform: 'facebook-page', pageId: '1234567890', token: 'EAAG-fake-token-for-tests' });
 const POST = () => ({ hook: 'own it once', reveal: '$5,549 saved year one', cta: 'open the page', demoUrl: 'https://sjgant80-hub.github.io/fallforce/stack.html', score: 1 });
@@ -114,4 +114,37 @@ test('FUZZ: total on garbage', () => {
   const nanNow = postable(POST(), CONFIG(), [], NaN);
   assert.equal(typeof nanNow.ok, 'boolean');
   assert.ok(true);
+});
+
+// ── post-proof wired in: the receipt-gate runs BEFORE the rail's discipline, never instead of it ──
+const RECEIPT = () => ({ url: 'https://sjgant80-hub.github.io/agent-proof/', live: true, ci: 'success', witness: { clean: true, killed: 130, total: 133 }, facts: [] });
+const PROVEN = () => ({ hook: 'agent-proof is live and witness-clean 130/133', reveal: 'CI green on the runner', cta: 'see https://sjgant80-hub.github.io/agent-proof/', score: 1 });
+const INFLATED = () => ({ hook: 'agent-proof is live and witness-clean 999/999', reveal: '100% flawless, CI green', cta: 'go now', score: 1 });
+
+test('postableProven: a receipt-backed post with the window open MAY go', () => {
+  const r = postableProven(PROVEN(), RECEIPT(), CONFIG(), [], 10 * HOUR);
+  assert.equal(r.ok, true);
+});
+
+test('postableProven: an INFLATED post is refused even with a high score and the window open', () => {
+  const r = postableProven(INFLATED(), RECEIPT(), CONFIG(), [], 10 * HOUR);
+  assert.equal(r.ok, false);
+  assert.match(r.why, /the receipt-gate refused it before the rail/);
+  assert.ok(r.unbacked.some((u) => u.raw === '999/999'));   // the fabricated witness score is named
+  assert.ok(r.unbacked.some((u) => u.raw === '100%'));       // the unbacked metric is named
+});
+
+test('postableProven: composes — a TRUTHFUL post still waits for the rate window', () => {
+  // the receipt backs every claim, but a post went out 30 min ago → the rail's own gap rule still bites
+  const history = [{ sentAtMs: 10 * HOUR - 30 * 60 * 1000 }];
+  const r = postableProven(PROVEN(), RECEIPT(), CONFIG(), history, 10 * HOUR);
+  assert.equal(r.ok, false);
+  assert.match(r.why, /rate window is closed/);
+});
+
+test('postableProven: the receipt-gate refuses BEFORE the rail even checks readiness', () => {
+  // no token in the config (rail not ready) AND an inflated post — the receipt-gate speaks first
+  const r = postableProven(INFLATED(), RECEIPT(), { platform: 'facebook-page', pageId: '1', token: '' }, [], 10 * HOUR);
+  assert.equal(r.ok, false);
+  assert.match(r.why, /the receipt-gate refused it before the rail/);
 });

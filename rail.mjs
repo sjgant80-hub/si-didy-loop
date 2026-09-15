@@ -19,6 +19,8 @@
 // reach exactly one origin: https://graph.facebook.com/. Nothing here can spend, sign, or
 // go-live — those stay doors.
 
+import { gatePost } from './receiptgate.mjs';
+
 export const GRAPH = 'https://graph.facebook.com/v21.0/';
 export const KAPPA = (Math.sqrt(5) - 1) / 2;
 
@@ -120,6 +122,19 @@ export function learn(history) {
     .filter(h => Number.isFinite(h.sentAtMs) && obj(h.metrics) && Number.isFinite(h.metrics.engagement))
     .map(h => ({ hook: str(h.hook), engagement: Math.max(0, h.metrics.engagement) }))
     .sort((a, b) => b.engagement - a.engagement || a.hook.localeCompare(b.hook));
+}
+
+/**
+ * The PROVEN rail (post-proof wired in): a post may go NOW only if it clears the receipt-gate FIRST
+ * — every checkable claim (a url, a K/N witness score, CI-green, "live", a percent) backed by a
+ * verifiable build-receipt — AND THEN clears the rail's own rate/score discipline. The receipt-gate
+ * runs before postable, never instead of it: an inflated post is refused even when the window is
+ * open and the score is high, and a truthful post still waits for the window. No receipt, no post.
+ */
+export function postableProven(post, receipt, config, history, nowMs) {
+  const proof = gatePost(post, receipt);
+  if (!proof.ok) return { ok: false, why: 'the receipt-gate refused it before the rail: ' + proof.why, unbacked: proof.unbacked };
+  return postable(post, config, history, nowMs);
 }
 
 export default postable;

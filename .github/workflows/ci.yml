@@ -26,3 +26,7 @@ jobs:
       - name: witness — the crawl law (must be CLEAN)
         run: |
           node /tmp/witness/witness.mjs mutate scripts/twelve-crawl.mjs             --timeout 60000 --cap 800             --test node --test scripts/twelve-crawl.test.mjs
+      # post-proof wired into the rail: no post rides it whose claims a build-receipt does not back.
+      - name: witness — the proven rail (must be CLEAN)
+        run: |
+          node /tmp/witness/witness.mjs mutate rail.mjs             --timeout 60000 --cap 600 --baseline witness.baseline.json             --test node --test rail.test.mjs
