@@ -1,7 +1,7 @@
 // si-didy-loop · rail.test.mjs — the sanctioned rail, every rule falsifiable.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { GRAPH, KAPPA, LIMITS, railReady, postable, postableProven, scrubPost, postScrubbedProven, buildPost, buildMetrics, redact, readMetrics, learn } from './rail.mjs';
+import { GRAPH, LINKEDIN, KAPPA, LIMITS, railReady, postable, postableProven, scrubPost, postScrubbedProven, buildPost, buildMetrics, redact, readMetrics, learn } from './rail.mjs';
 
 const CONFIG = () => ({ platform: 'facebook-page', pageId: '1234567890', token: 'EAAG-fake-token-for-tests' });
 const POST = () => ({ hook: 'own it once', reveal: '$5,549 saved year one', cta: 'open the page', demoUrl: 'https://sjgant80-hub.github.io/fallforce/stack.html', score: 1 });
@@ -204,4 +204,67 @@ test('postScrubbedProven / scrubPost: total on garbage', () => {
   const s = scrubPost(null, null);
   assert.ok(s.post && typeof s.report.hidden === 'number');
   assert.doesNotThrow(() => scrubPost(7, 'x'));
+});
+
+// ── the LinkedIn adapter — same discipline, the platform's own shape ──
+const LI_CONFIG = () => ({ platform: 'linkedin', authorUrn: 'urn:li:person:ABC123', token: 'AQV-fake-li-token-for-tests' });
+
+test('RAILREADY accepts a valid LinkedIn config and refuses the bad ones — never carrying the token', () => {
+  const ok = railReady(LI_CONFIG());
+  assert.equal(ok.ok, true);
+  assert.match(ok.why, /LinkedIn author urn:li:person:ABC123/);
+  assert.ok(!ok.why.includes('AQV'), 'even the ready line never carries the token');
+  assert.match(railReady({ platform: 'linkedin', authorUrn: '', token: 'x' }).why, /authorUrn is empty or malformed/);
+  assert.match(railReady({ platform: 'linkedin', authorUrn: 'not-a-urn', token: 'x' }).why, /authorUrn is empty or malformed/);
+  const noTok = railReady({ platform: 'linkedin', authorUrn: 'urn:li:organization:42', token: '' });
+  assert.match(noTok.why, /paste the LinkedIn access token.*YOURSELF/);
+  assert.match(noTok.why, /never rides through chat, a repo, or a prompt/);
+  // an unknown platform still names both sanctioned rails
+  assert.match(railReady({ platform: 'twitter' }).why, /facebook-page and linkedin are the ones that exist/);
+});
+
+test('buildPost(linkedin) is the exact UGC Posts request — Bearer header, JSON body, ARTICLE on a demoUrl', () => {
+  const req = buildPost(POST(), LI_CONFIG());
+  assert.equal(req.url, LINKEDIN + 'ugcPosts');
+  assert.equal(req.method, 'POST');
+  assert.equal(req.headers.Authorization, 'Bearer AQV-fake-li-token-for-tests');
+  assert.equal(req.headers['X-Restli-Protocol-Version'], '2.0.0');
+  assert.equal(req.body.author, 'urn:li:person:ABC123');
+  assert.equal(req.body.lifecycleState, 'PUBLISHED');
+  const share = req.body.specificContent['com.linkedin.ugc.ShareContent'];
+  assert.match(share.shareCommentary.text, /own it once/);           // the hook is in the message
+  assert.equal(share.shareMediaCategory, 'ARTICLE');                  // POST has a demoUrl
+  assert.equal(share.media[0].originalUrl, POST().demoUrl);
+  assert.equal(req.body.visibility['com.linkedin.ugc.MemberNetworkVisibility'], 'PUBLIC');
+  // no demoUrl → NONE, no media
+  const bare = buildPost({ hook: 'h', cta: 'c', score: 1 }, LI_CONFIG());
+  assert.equal(bare.body.specificContent['com.linkedin.ugc.ShareContent'].shareMediaCategory, 'NONE');
+  assert.equal('media' in bare.body.specificContent['com.linkedin.ugc.ShareContent'], false);
+});
+
+test('redact strikes the LinkedIn Bearer token from the header, everywhere', () => {
+  const red = redact(buildPost(POST(), LI_CONFIG()));
+  assert.equal(red.headers.Authorization, 'Bearer ·struck·');
+  assert.ok(!JSON.stringify(red).includes('AQV'), 'the token appears nowhere in a printable request');
+});
+
+test('buildMetrics(linkedin) reads socialActions with the Bearer header', () => {
+  const m = buildMetrics('urn:li:share:999', LI_CONFIG());
+  assert.match(m.url, /socialActions\/urn%3Ali%3Ashare%3A999/);
+  assert.equal(m.headers.Authorization, 'Bearer AQV-fake-li-token-for-tests');
+  assert.ok(!m.url.includes('AQV'), 'the token is not in the metrics url');
+});
+
+test('readMetrics reads the LinkedIn socialActions shape too', () => {
+  const r = readMetrics({ likesSummary: { totalLikes: 5 }, commentsSummary: { count: 2 } });
+  assert.deepEqual({ likes: r.likes, comments: r.comments, shares: r.shares }, { likes: 5, comments: 2, shares: 0 });
+  assert.equal(r.engagement, 5 + 2 * 2 + 0);
+  // the Facebook shape still reads
+  const fb = readMetrics({ likes: { summary: { total_count: 3 } }, comments: { summary: { total_count: 1 } }, shares: { count: 4 } });
+  assert.deepEqual({ likes: fb.likes, comments: fb.comments, shares: fb.shares }, { likes: 3, comments: 1, shares: 4 });
+});
+
+test('the rate/receipt discipline is platform-blind — postable works on a linkedin config', () => {
+  assert.equal(postable(POST(), LI_CONFIG(), [], 10 * HOUR).ok, true);
+  assert.doesNotThrow(() => buildPost(null, { platform: 'linkedin' }));  // total on garbage
 });

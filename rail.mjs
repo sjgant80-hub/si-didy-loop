@@ -15,14 +15,20 @@
 //   readMetrics — real engagement out of the Graph response, tolerant of partial shapes.
 //   learn       — rank what actually converted so the next post starts from the best hook.
 //
-// The kernel is pure and never fetches; the runner (scripts/rail.mjs) owns the wire and may
-// reach exactly one origin: https://graph.facebook.com/. Nothing here can spend, sign, or
-// go-live — those stay doors.
+// The kernel is pure and never fetches; the runner (scripts/rail.mjs) owns the wire and may reach
+// only the sanctioned origins: https://graph.facebook.com/ (facebook-page) and
+// https://api.linkedin.com/ (linkedin). Nothing here can spend, sign, or go-live — those stay doors.
+//
+// Two platforms, one discipline: `config.platform` is 'facebook-page' or 'linkedin'. facebook-page
+// carries its Page token in the request body/url; linkedin carries an OAuth token in the
+// Authorization: Bearer header — redact() strikes it from ALL of those. Each token lives ONLY in
+// local-dna/rail-config.json, pasted by the key-holder's own hand.
 
 import { gatePost } from './receiptgate.mjs';
 import { scrub } from './scrub.mjs';
 
 export const GRAPH = 'https://graph.facebook.com/v21.0/';
+export const LINKEDIN = 'https://api.linkedin.com/v2/';
 export const KAPPA = (Math.sqrt(5) - 1) / 2;
 
 export const LIMITS = Object.freeze({
@@ -37,10 +43,17 @@ const str = (v) => typeof v === 'string' ? v : '';
 export function railReady(config) {
   const c = obj(config);
   if (!c) return { ok: false, why: 'no rail config — run `node scripts/rail.mjs --init`, then do the one-time setup it prints (the human 10%)' };
-  if (c.platform !== 'facebook-page') return { ok: false, why: `platform "${str(c.platform) || '(none)'}" is not a sanctioned rail this kernel knows — facebook-page is the one that exists` };
-  if (!str(c.pageId)) return { ok: false, why: 'the pageId is empty — the numeric Page ID goes in local-dna/rail-config.json' };
-  if (!str(c.token)) return { ok: false, why: 'the token is empty — paste the Page Access Token into local-dna/rail-config.json YOURSELF; it never rides through chat, a repo, or a prompt' };
-  return { ok: true, why: `rail configured for page ${c.pageId} — the token stays in the config file and is never printed` };
+  if (c.platform === 'facebook-page') {
+    if (!str(c.pageId)) return { ok: false, why: 'the pageId is empty — the numeric Page ID goes in local-dna/rail-config.json' };
+    if (!str(c.token)) return { ok: false, why: 'the token is empty — paste the Page Access Token into local-dna/rail-config.json YOURSELF; it never rides through chat, a repo, or a prompt' };
+    return { ok: true, why: `rail configured for page ${c.pageId} — the token stays in the config file and is never printed` };
+  }
+  if (c.platform === 'linkedin') {
+    if (!/^urn:li:(person|organization):.+/.test(str(c.authorUrn))) return { ok: false, why: 'the authorUrn is empty or malformed — a urn:li:person:… or urn:li:organization:… goes in local-dna/rail-config.json' };
+    if (!str(c.token)) return { ok: false, why: 'the token is empty — paste the LinkedIn access token into local-dna/rail-config.json YOURSELF; it never rides through chat, a repo, or a prompt' };
+    return { ok: true, why: `rail configured for LinkedIn author ${c.authorUrn} — the token stays in the config file and is never printed` };
+  }
+  return { ok: false, why: `platform "${str(c.platform) || '(none)'}" is not a sanctioned rail this kernel knows — facebook-page and linkedin are the ones that exist` };
 }
 
 /**
@@ -71,10 +84,30 @@ export function postable(post, config, history, nowMs) {
   return { ok: true, why: 'rail ready, post graded, window open — it may go' };
 }
 
-/** The exact Graph API publish request. The message is assembled, never improvised. */
+/** The exact publish request for the configured platform. The message is assembled, never improvised. */
 export function buildPost(post, config) {
   const p = obj(post) || {}, c = obj(config) || {};
   const message = [str(p.hook), str(p.reveal), str(p.cta)].filter(Boolean).join('\n\n');
+  if (c.platform === 'linkedin') {
+    // LinkedIn UGC Posts: the token rides in the Authorization header (never the url or body), the
+    // body is JSON, and a demoUrl becomes an ARTICLE share. Same message, the platform's own shape.
+    const share = {
+      shareCommentary: { text: message },
+      shareMediaCategory: str(p.demoUrl) ? 'ARTICLE' : 'NONE',
+      ...(str(p.demoUrl) ? { media: [{ status: 'READY', originalUrl: p.demoUrl }] } : {}),
+    };
+    return {
+      url: LINKEDIN + 'ugcPosts',
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + str(c.token), 'X-Restli-Protocol-Version': '2.0.0', 'Content-Type': 'application/json' },
+      body: {
+        author: str(c.authorUrn),
+        lifecycleState: 'PUBLISHED',
+        specificContent: { 'com.linkedin.ugc.ShareContent': share },
+        visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
+      },
+    };
+  }
   return {
     url: GRAPH + str(c.pageId) + '/feed',
     method: 'POST',
@@ -82,33 +115,45 @@ export function buildPost(post, config) {
   };
 }
 
-/** The engagement read-back for one published post id. */
+/** The engagement read-back for one published post id, on the configured platform. */
 export function buildMetrics(postId, config) {
   const c = obj(config) || {};
+  if (c.platform === 'linkedin') {
+    return {
+      url: LINKEDIN + 'socialActions/' + encodeURIComponent(str(postId)),
+      method: 'GET',
+      headers: { 'Authorization': 'Bearer ' + str(c.token) },
+    };
+  }
   return {
     url: GRAPH + str(postId) + '?fields=likes.summary(true),comments.summary(true),shares&access_token=' + encodeURIComponent(str(c.token)),
     method: 'GET',
   };
 }
 
-/** Any printable form of a request has the token STRUCK. No exceptions, no debug modes. */
+/** Any printable form of a request has the token STRUCK — url query, JSON body, AND Authorization
+ *  header (LinkedIn's Bearer). No exceptions, no debug modes. */
 export function redact(req) {
   const r = obj(req) || {};
   const body = obj(r.body) ? { ...r.body } : undefined;
   if (body && 'access_token' in body) body.access_token = '·struck·';
+  const headers = obj(r.headers) ? { ...r.headers } : undefined;
+  if (headers && 'Authorization' in headers) headers.Authorization = 'Bearer ·struck·';
   return {
     url: str(r.url).replace(/access_token=[^&]*/g, 'access_token=·struck·'),
     method: str(r.method),
+    ...(headers ? { headers } : {}),
     ...(body ? { body } : {}),
   };
 }
 
-/** Real engagement out of a Graph response — partial shapes read as zeros, never as crashes. */
+/** Real engagement out of a response — Facebook Graph OR LinkedIn socialActions shape, whichever is
+ *  present. Partial shapes read as zeros, never as crashes. */
 export function readMetrics(response) {
   const r = obj(response) || {};
   const n = (v) => (Number.isFinite(v) && v >= 0) ? v : 0;
-  const likes = n(obj(obj(r.likes)?.summary)?.total_count);
-  const comments = n(obj(obj(r.comments)?.summary)?.total_count);
+  const likes = n(obj(obj(r.likes)?.summary)?.total_count) || n(obj(r.likesSummary)?.totalLikes);
+  const comments = n(obj(obj(r.comments)?.summary)?.total_count) || n(obj(r.commentsSummary)?.count);
   const shares = n(obj(r.shares)?.count);
   return { likes, comments, shares, engagement: likes + comments * 2 + shares * 3 };
 }
