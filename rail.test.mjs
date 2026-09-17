@@ -1,7 +1,7 @@
 // si-didy-loop · rail.test.mjs — the sanctioned rail, every rule falsifiable.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { GRAPH, LINKEDIN, KAPPA, LIMITS, railReady, postable, postableProven, scrubPost, postScrubbedProven, buildPost, buildMetrics, redact, readMetrics, learn } from './rail.mjs';
+import { GRAPH, LINKEDIN, KAPPA, LIMITS, railReady, postable, postableProven, scrubPost, postScrubbedProven, postScrubbedProvenAll, railConfigs, readyRails, buildPost, buildMetrics, redact, readMetrics, learn } from './rail.mjs';
 
 const CONFIG = () => ({ platform: 'facebook-page', pageId: '1234567890', token: 'EAAG-fake-token-for-tests' });
 const POST = () => ({ hook: 'own it once', reveal: '$5,549 saved year one', cta: 'open the page', demoUrl: 'https://sjgant80-hub.github.io/fallforce/stack.html', score: 1 });
@@ -267,4 +267,51 @@ test('readMetrics reads the LinkedIn socialActions shape too', () => {
 test('the rate/receipt discipline is platform-blind — postable works on a linkedin config', () => {
   assert.equal(postable(POST(), LI_CONFIG(), [], 10 * HOUR).ok, true);
   assert.doesNotThrow(() => buildPost(null, { platform: 'linkedin' }));  // total on garbage
+});
+
+// ── the both-platforms fan-out: one draft, every configured rail, each on its own window ──
+const LI = () => ({ platform: 'linkedin', authorUrn: 'urn:li:person:ABC123', token: 'AQV-fake-li-token-for-tests' });
+
+test('railConfigs normalises one or many, dropping the garbage', () => {
+  assert.equal(railConfigs(CONFIG()).length, 1);
+  assert.deepEqual(railConfigs([CONFIG(), null, 7, LI()]).map(c => c.platform), ['facebook-page', 'linkedin']);
+  assert.deepEqual(railConfigs(null), []);
+  assert.deepEqual(railConfigs('nope'), []);
+});
+
+test('readyRails returns only the rails that are actually configured, tagged by platform', () => {
+  const rails = readyRails([CONFIG(), LI(), { platform: 'facebook-page', pageId: '', token: 'x' }, { platform: 'twitter' }]);
+  assert.deepEqual(rails.map(r => r.platform), ['facebook-page', 'linkedin']);
+  assert.ok(rails.every(r => r.ready.ok));
+});
+
+test('postScrubbedProvenAll fans one proven draft to BOTH platforms when both windows are open', () => {
+  const fan = postScrubbedProvenAll(PROVEN(), RECEIPT(), [CONFIG(), LI()], {}, 10 * HOUR);
+  assert.deepEqual(fan.map(f => f.platform), ['facebook-page', 'linkedin']);
+  assert.ok(fan.every(f => f.ok), fan.map(f => f.why).join(' | '));
+  // each carries its own scrubbed post to build from, and buildPost routes to the right shape
+  assert.equal(buildPost(fan[0].post, fan[0].config).url, GRAPH + '1234567890/feed');
+  assert.equal(buildPost(fan[1].post, fan[1].config).url, LINKEDIN + 'ugcPosts');
+});
+
+test('each rail is judged on ITS OWN window — FB closed, LinkedIn still goes', () => {
+  const now = 10 * HOUR;
+  const hist = { 'facebook-page': [{ sentAtMs: now }], 'linkedin': [] };   // FB just posted, LI idle
+  const fan = postScrubbedProvenAll(PROVEN(), RECEIPT(), [CONFIG(), LI()], hist, now);
+  const fb = fan.find(f => f.platform === 'facebook-page');
+  const li = fan.find(f => f.platform === 'linkedin');
+  assert.equal(fb.ok, false);
+  assert.match(fb.why, /rate window is closed/);
+  assert.equal(li.ok, true, li.why);
+});
+
+test('the receipt-gate refuses an inflated draft on EVERY platform', () => {
+  const fan = postScrubbedProvenAll(INFLATED(), RECEIPT(), [CONFIG(), LI()], {}, 10 * HOUR);
+  assert.ok(fan.every(f => !f.ok), 'no receipt, no post — on any rail');
+  assert.ok(fan.every(f => /receipt-gate refused/.test(f.why)));
+});
+
+test('postScrubbedProvenAll: total on garbage', () => {
+  assert.doesNotThrow(() => postScrubbedProvenAll(null, null, null, null, null));
+  assert.deepEqual(postScrubbedProvenAll(PROVEN(), RECEIPT(), null, null, 0), []);
 });

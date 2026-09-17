@@ -222,4 +222,35 @@ export function postScrubbedProven(post, receipt, config, history, nowMs) {
   return { ...decision, post: scrubbed.post, scrub: scrubbed.report };
 }
 
+/** One config or an array of them, normalised to a clean array of config objects. Total. */
+export function railConfigs(configs) {
+  return (Array.isArray(configs) ? configs : [configs]).map(obj).filter(Boolean);
+}
+
+/** The subset of configs whose rail is ready, each tagged with its platform — the platforms that
+ *  will actually receive a post. Total. */
+export function readyRails(configs) {
+  return railConfigs(configs)
+    .map((c) => ({ platform: str(c.platform), config: c, ready: railReady(c) }))
+    .filter((r) => r.ready.ok);
+}
+
+/**
+ * Fan the SAME draft out across EVERY configured platform (facebook-page AND linkedin, or any
+ * subset), each judged on ITS OWN rate window — the platforms are independent rails, one draft.
+ * historyByPlatform maps a platform name → that platform's own sent-history. Returns one decision
+ * per config, scrubbed + receipt-gated + rate-checked, so the runner fires buildPost(d.post, d.config)
+ * for each d.ok. A post that the receipt-gate clears but one platform's window does not still goes
+ * on the others whose window is open. No receipt, no post — on any platform.
+ */
+export function postScrubbedProvenAll(post, receipt, configs, historyByPlatform, nowMs) {
+  const byPlat = obj(historyByPlatform) || {};
+  return railConfigs(configs).map((config) => {
+    const platform = str(config.platform);
+    const history = Array.isArray(byPlat[platform]) ? byPlat[platform] : [];
+    const d = postScrubbedProven(post, receipt, config, history, nowMs);
+    return { platform, config, ...d };
+  });
+}
+
 export default postable;
