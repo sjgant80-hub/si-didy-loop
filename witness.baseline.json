@@ -33,5 +33,10 @@
     "mutation": "> → >=",
     "snippet": "const n = Number.isInteger(attempt) && attempt > 0 ? attempt : 0;",
     "reason": "boundary identity: > and >= differ only at attempt === 0, and both arms then yield 0 (the value itself on one side, the sanitised default on the other). No input separates them."
+  },
+  {
+    "mutation": "< → <=",
+    "snippet": "if (at && (entry.firstAt === null || at < entry.firstAt)) entry.firstAt = at;",
+    "reason": "Genuinely equivalent: on a tied earliest timestamp, entry.firstAt is reassigned to the IDENTICAL string it already holds — a self-assignment with no observable effect on any output. This differs from the lastAt line (kept strict, not baselined), where a tie still updates `sample` as a real side effect, so that boundary IS observable and IS tested. No test can distinguish < from <= here because both produce the same result on every input; restructuring the comparison cannot remove the equivalence, only relocate it."
   }
 ]
