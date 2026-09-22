@@ -30,3 +30,8 @@ jobs:
       - name: witness — the proven rail (must be CLEAN)
         run: |
           node /tmp/witness/witness.mjs mutate rail.mjs             --timeout 60000 --cap 600 --baseline witness.baseline.json             --test node --test rail.test.mjs
+      # Kar's fold: closes the "rediscovered N nights running" gap — recurring sandbox lessons,
+      # folded, before it dreams again.
+      - name: witness — the lessons fold (must be CLEAN)
+        run: |
+          node /tmp/witness/witness.mjs mutate lessonsfold.mjs             --timeout 60000 --cap 600 --baseline witness.baseline.json             --test node --test lessonsfold.test.mjs
