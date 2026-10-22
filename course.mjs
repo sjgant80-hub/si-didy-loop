@@ -39,6 +39,10 @@ export const SYLLABUS_TERMS = Object.freeze([...new Set(
 const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v)) ? v : null;
 const str = (v) => typeof v === 'string' ? v : '';
 const clamp01 = (v) => Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0;
+// what a stage keeps of its evidence. Found 2026-10-22: at 300, S6's evidence (the machine's handle, then what Simon
+// reads — two routes said in plain words, ~720 characters) lost its plain half mid-word, and the morning brief said
+// "I think your memory note … and your memory note "agent-" and stopped.
+export const EVIDENCE_MAX = 1200;
 
 export function freshProgress() {
   return { kind: 'course-progress', stage: 0, passed: {}, attempts: [] };
@@ -65,7 +69,7 @@ export function attempt(progress, stageId, score, gradedBy, evidence, at) {
   }
   if (!Number.isFinite(score)) return { ok: false, why: 'the gate returned no real score — nothing to judge' };
   const s = clamp01(score);
-  const rec = { stage: stageId, score: s, at: str(at), evidence: str(evidence).slice(0, 300) };
+  const rec = { stage: stageId, score: s, at: str(at), evidence: str(evidence).slice(0, EVIDENCE_MAX) };
   const attempts = [...(Array.isArray(p.attempts) ? p.attempts : []), rec];
   if (s >= KAPPA) {
     return {

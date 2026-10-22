@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  KAPPA, STAGES, SYLLABUS_TERMS, freshProgress, attempt, current, expansionUnlocked,
+  KAPPA, STAGES, SYLLABUS_TERMS, EVIDENCE_MAX, freshProgress, attempt, current, expansionUnlocked,
   gradeFoundation, gradePitch, gradeProduct, gradePost, gradeRoute, gradeCycle, gradeExpansion,
 } from './course.mjs';
 
@@ -234,4 +234,15 @@ test('FUZZ: total on garbage', () => {
   const r = attempt(freshProgress(), 'S0', NaN, 'gradeFoundation', 'e', 't');
   assert.match(r.why, /no real score/);
   assert.ok(true);
+});
+
+test('A STAGE KEEPS ITS EVIDENCE WHOLE up to EVIDENCE_MAX, and no further', () => {
+  assert.equal(EVIDENCE_MAX, 1200);
+  const said = 'proposed from the dream shadow: "a bundled with b" — proposal only. In plain words: ' + 'why '.repeat(160);
+  const whole = attempt(freshProgress(), 'S0', 0.9, 'gradeFoundation', said, 't');
+  assert.equal(whole.progress.attempts[0].evidence, said, 'a ~720-character S6 evidence is kept whole');
+  const long = attempt(freshProgress(), 'S0', 0.9, 'gradeFoundation', 'x'.repeat(EVIDENCE_MAX + 50), 't');
+  assert.equal(long.progress.attempts[0].evidence.length, EVIDENCE_MAX);
+  assert.equal(long.progress.passed.S0.evidence.length, EVIDENCE_MAX);
+  assert.equal(attempt(freshProgress(), 'S0', 0.9, 'gradeFoundation', 'x'.repeat(EVIDENCE_MAX), 't').progress.attempts[0].evidence.length, EVIDENCE_MAX);
 });
