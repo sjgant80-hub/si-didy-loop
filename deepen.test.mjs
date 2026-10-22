@@ -245,3 +245,22 @@ test('THE DREAM SEEDS ARE EXACT — two real pool members, and a negative cycle 
   const held = dream(g, pool, 0).held;
   assert.ok(held.some(h => h.node === 'C' && h.root === 'A'), 'the two-hop discovery A→…→C must be held open');
 });
+
+test('A HUB STILL DREAMS — one-hop neighbours past the cap never crowd out the two-hop find, and the route is held', () => {
+  // the 2026-10-22 night: the seeds are the best-connected nodes, their neighbours filled every slot, and the dream
+  // held nothing. Here the hub has 120 neighbours, more than the 89 a dream holds, and one of them leads on to FIND.
+  const g = mini();
+  g.addNode('HUB', 'repo', { src: 'estate-index' });
+  for (let i = 0; i < 120; i++) { g.addNode('n' + i, 'repo', { src: 'estate-index' }); g.addEdge('HUB', 'n' + i, 'reuses'); }
+  g.addNode('FIND', 'repo', { src: 'estate-index' });
+  g.addEdge('n7', 'FIND', 'kin', { meta: { topic: 'shared' } });
+  const d = dream(g, ['HUB'], 0);
+  assert.deepEqual(d.held.map(h => h.node), ['FIND'], 'only the two-hop discovery is held, past 120 one-hop neighbours');
+  assert.deepEqual(d.held[0].path, [{ from: 'HUB', type: 'reuses', to: 'n7' }, { from: 'n7', type: 'kin', to: 'FIND' }], 'the route is held, hop by hop');
+  // the width caps what is HELD: three two-hop finds, a width of 2 holds the two strongest
+  for (const k of ['F2', 'F3']) { g.addNode(k, 'repo', { src: 'estate-index' }); g.addEdge('n9', k, 'kin'); }
+  assert.equal(dream(g, ['HUB'], 0, { width: 2 }).held.length, 2, 'a width of 2 holds two');
+  assert.equal(dream(g, ['HUB'], 0, { width: 3 }).held.length, 3, 'a width of 3 holds three');
+  assert.equal(dream(g, ['HUB'], 0, { width: 0 }).held.length, 3, 'a width that is no count falls back to 89, not to nothing');
+  assert.equal(dream(g, ['HUB'], 0, { width: 1.5 }).held.length, 3, 'a fractional width falls back to 89');
+});

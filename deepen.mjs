@@ -163,14 +163,19 @@ export function dream(g, seedIds, cycle, opts) {
   const c = Number.isFinite(cycle) && cycle >= 0 ? Math.floor(cycle) : 0;
   const idx = Math.floor((c * KAPPA * pool.length)) % pool.length;   // the golden advance over the pool
   const seeds = [pool[idx], pool[(idx + 1) % pool.length]].filter((v, i, a) => a.indexOf(v) === i);
-  // a dream fans WIDER than a turn: dense seeds fill a narrow fan with one-hop neighbours and
-  // the two-hop discoveries — the only thing a dream is for — never fit under the cap
-  const fanned = fan(G, seeds, { width: 89, ...obj(opts) });
+  // the cap is on what the dream HOLDS, never on what it may look at: dense seeds fill any fan cap with one-hop
+  // neighbours, and the two-hop discoveries (the only thing a dream is for) never fit under it. Found 2026-10-22: a
+  // width of 89 still held NOTHING on most nights, because the seeds are the best-connected nodes in the estate.
+  const o = obj(opts);
+  const width = Number.isInteger(o.width) && o.width > 0 ? o.width : 89;
+  const fanned = fan(G, seeds, { ...o, width: Infinity });
   const { kept } = gate(fanned, opts);
   return {
     seeds,
-    held: kept.filter(b => b.hops >= 2).map(b => ({
+    held: kept.filter(b => b.hops >= 2).slice(0, width).map(b => ({
       node: b.node, root: b.root, norm: b.norm,
+      // the route the dream walked, so a morning can say in plain words WHY these two came together
+      path: arr(b.path).map(e => ({ from: e.from, type: e.type, to: e.to })),
       why: 'held open on the shadow surface — interesting, gate-passed in a dream, unconfirmed by a real turn',
     })),
   };

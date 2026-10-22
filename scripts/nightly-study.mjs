@@ -76,7 +76,7 @@ const course = run('train.mjs', ['--all']);
 // sealed exam — a verified collapse stands in the field, a failure is discarded and re-sat
 // another night with a sharpened prompt. Sovereign by construction: Ollama or a loud stop.
 const wispSeed = run('wisp-collapse.mjs', ['--seed']);
-const wisp = run('wisp-collapse.mjs', ['--collapse']);
+const wisp = run('wisp-collapse.mjs', ['--collapse', '5']);
 
 const mind = run('export-mind.mjs');
 
@@ -90,11 +90,17 @@ const line = [
   ...sweeps,
   dream.ok ? dream.out.split('\n')[0] : 'DREAM FAILED',
   measure.out.trim().split('\n').slice(-2).join('\n'),
-  posted.out.trim().split('\n').slice(-1)[0],
+  // the line that says what happened, not whatever was printed last (a refusal from the rail wraps over several lines)
+  posted.out.trim().split('\n').filter(l => /POSTED|refused|not posting|outbox is empty|STOP/.test(l)).map(l => l.slice(0, 200)).join('\n') || 'RAIL: no output',
   course.ok ? course.out.trim().split('\n').filter(l => /MASTERED|not yet|proposed|now in front/.test(l)).join('\n') : 'COURSE DRILL FAILED',
   wispSeed.out.trim().split('\n').slice(-2).join('\n'),
-  wisp.out.trim().split('\n').filter(l => /collapsing|STANDS|✗|nothing un-collapsed/.test(l)).join('\n') || 'WISP: no output',
+  // every wisp outcome is said, the slow ones too: for a week the night printed only "collapsing" and hid the timeouts
+  wisp.out.trim().split('\n').filter(l => /collapsing|answered|did not answer|skipped|STOP|STANDS|✗|nothing un-collapsed|^sat /.test(l)).join('\n') || 'WISP: no output',
   mind.ok ? mind.out.trim() : 'MIND EXPORT FAILED',
+  // the soul and the ladder ran silently: a night that failed them read the same as a night that fed them
+  soul.ok ? 'soul: ' + (soul.out.split('\n').find(l => /turns across/.test(l)) || 'ingested').trim().slice(0, 200) : 'SOUL INGEST FAILED:\n' + soul.out.trim().slice(-300),
+  ladder.every(s => s.ok) ? 'ladder: evidence rescanned, tiers recomputed, the world rebuilt'
+    : 'LADDER FAILED at ' + ['scan-ci', 'scan-tiers', 'build-world'].filter((_, i) => !ladder[i].ok).join(', ') + ':\n' + ladder.find(s => !s.ok).out.trim().slice(-300),
   brief.ok ? brief.out.trim() : 'BRIEF FAILED',
   '',
 ].join('\n');

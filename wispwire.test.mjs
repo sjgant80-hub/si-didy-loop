@@ -227,3 +227,68 @@ test('FUZZ: total on garbage', () => {
   assert.notEqual(nameHash('a'), nameHash('b'));
   assert.ok(true);
 });
+
+test('EXTRACTCODE TAKES A SHORT NAME AND GIVES IT THE FULL ONE — the hash dropped is not a wrong answer', () => {
+  // 2026-10-22: the 7B wrote "function scorecardScore(dims)" for scorecardScore_2ae8f67d and was refused for it
+  const out = extractCode('Here:\nfunction score(dims) { return {ok:false}; }', 'score_2ae8f67d');
+  assert.equal(out.ok, true, out.why);
+  assert.equal(out.code, 'function score_2ae8f67d(dims) { return {ok:false}; }');
+  assert.equal(extractCode('function score  (a) { return 1; }', 'score_2ae8f67d').code, 'function score_2ae8f67d  (a) { return 1; }', 'spaces before the bracket are kept');
+  // the short name must be the WHOLE name: a longer function that starts with it is not the answer
+  assert.match(extractCode('function scoreAll(a) { return 1; }', 'score_2ae8f67d').why, /did not produce a function named score_2ae8f67d/);
+  // the rename does not let reach through: the screen still runs on the renamed code
+  assert.match(extractCode('function score(a) { return fetch(a); }', 'score_2ae8f67d').why, /pure computation only/);
+  // only an 8-hex hash is a hash: a name without one has no short form to accept
+  assert.equal(extractCode('function score(a) { return 1; }', 'score_2ae8f67').ok, false, 'seven hex digits is not a hash');
+  assert.equal(extractCode('function score(a) { return 1; }', 'score_2ae8f67dd').ok, false, 'nine hex digits is not a hash');
+  assert.equal(extractCode('function score(a) { return 1; }', 'score_2AE8F67D').ok, false, 'the hash is lower-case hex');
+  assert.equal(extractCode('function score(a) { return 1; }', 'x score_2ae8f67d').ok, false, 'a name with a space has no short form');
+  assert.equal(extractCode('function 9score(a) { return 1; }', '9score_2ae8f67d').ok, false, 'a short form must be an identifier');
+});
+
+test('EXTRACTCODE TAKES AN ARROW BOUND TO THE NAME — made a const, so the field can run it in strict mode', () => {
+  // 2026-10-22: the 7B wrote "panelAgreement_32f57879 = (scores) => {…}" and was refused for the shape, not the logic
+  const bare = extractCode('```javascript\nscore_2ae8f67d = (a) => { return {ok:false}; }\n```', 'score_2ae8f67d');
+  assert.equal(bare.ok, true, bare.why);
+  assert.equal(bare.code, 'const score_2ae8f67d = (a) => { return {ok:false}; }');
+  for (const kw of ['const', 'let', 'var']) {
+    assert.equal(extractCode(`${kw} score_2ae8f67d = (a) => 1;`, 'score_2ae8f67d').code, 'const score_2ae8f67d = (a) => 1;', kw + ' becomes const');
+  }
+  assert.equal(extractCode('const score = (a) => 1;', 'score_2ae8f67d').code, 'const score_2ae8f67d = (a) => 1;', 'the short name, bound, is renamed too');
+  assert.equal(extractCode('score_2ae8f67d=(a)=>1', 'score_2ae8f67d').code, 'const score_2ae8f67d =(a)=>1', 'no spaces needed');
+  // a comparison or an arrow parameter is not a binding
+  assert.equal(extractCode('if (score_2ae8f67d == 1) {}', 'score_2ae8f67d').ok, false, '== is not a binding');
+  assert.equal(extractCode('[1].map(score_2ae8f67d => 1)', 'score_2ae8f67d').ok, false, 'a parameter is not a binding');
+  assert.equal(extractCode('myscore_2ae8f67d = 1', 'score_2ae8f67d').ok, false, 'a longer name that ends in it is not it');
+  // a declared function still wins over a binding, and the screen still runs on what is taken
+  assert.ok(extractCode('const x = 1;\nfunction score(a) { return 1; }\nscore_2ae8f67d = 2', 'score_2ae8f67d').code.startsWith('function score_2ae8f67d(a)'));
+  assert.match(extractCode('score_2ae8f67d = (a) => fetch(a)', 'score_2ae8f67d').why, /pure computation only/);
+  assert.equal(extractCode('x = 1', '').ok, false, 'no name, nothing bound');
+});
+
+test('A BOUND ARROW STANDS IN THE REAL FIELD — the const form runs under the field\'s strict mode', () => {
+  const field = estate.newField();
+  const { spec } = specFromProposal(PROPOSAL());
+  const d = estate.define(field, spec);
+  const base = TEMPLATES.find(t => spec.name.startsWith(t.fn + '_'));
+  const ref = REFERENCE[base.fn].replace('NAME', spec.name);
+  const arrow = ref.replace(/^function (\w+)\(([^)]*)\)/, '$1 = ($2) =>');
+  const got = extractCode(arrow, spec.name);
+  assert.equal(got.ok, true, got.why);
+  const out = estate.collapse(field, d.id, () => got.code, { ts: 1 });
+  assert.equal(out.ok, true, out.why);
+});
+
+test('EXTRACTCODE FORGIVES A MISCOPIED HASH, NOT A DIFFERENT NAME — any eight hex digits after the short name', () => {
+  // 2026-10-22: the 7B wrote invoiceTotals_c0ca2209 for invoiceTotals_c0ca2109
+  assert.equal(extractCode('function score_deadbeef(a) { return 1; }', 'score_2ae8f67d').code, 'function score_2ae8f67d(a) { return 1; }');
+  assert.equal(extractCode('const score_deadbeef = (a) => 1;', 'score_2ae8f67d').code, 'const score_2ae8f67d = (a) => 1;');
+  assert.equal(extractCode('function score_deadbee(a) { return 1; }', 'score_2ae8f67d').ok, false, 'seven hex digits is not a hash');
+  assert.equal(extractCode('function score_DEADBEEF(a) { return 1; }', 'score_2ae8f67d').ok, false, 'upper-case is not the hash');
+  assert.equal(extractCode('function other_2ae8f67d(a) { return 1; }', 'score_2ae8f67d').ok, false, 'the right hash on another name is another function');
+  assert.equal(extractCode('function score_deadbeefx(a) { return 1; }', 'score_2ae8f67d').ok, false, 'a hash with more after it is another name');
+});
+
+test('A NAME WITH NO HASH, FIRST THING IN THE ANSWER, IS TAKEN AS IT IS', () => {
+  assert.equal(extractCode('function plain(a) { return 1; }', 'plain').code, 'function plain(a) { return 1; }');
+});

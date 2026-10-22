@@ -21,6 +21,9 @@ import {
   KAPPA, STAGES, freshProgress, attempt, current,
   gradeFoundation, gradePitch, gradeProduct, gradePost, gradeRoute, gradeCycle, gradeExpansion,
 } from '../course.mjs';
+import { sayIdea } from '../plainsay.mjs';
+import { readJsonSafe, writeJsonSafe } from '../safejson.mjs';
+import { loadLook } from './look.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const DNA = join(here, '..', 'local-dna');
@@ -34,10 +37,12 @@ const readJson = (f, fb) => existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) 
 const writeJson = (f, v) => writeFileSync(f, JSON.stringify(v, null, 1));
 const cat = () => readJson(join(FORGE_DIR, 'catalogue.json'), null);
 
+// the overlay is the night's whole memory (17MB and growing): read loudly and written atomically, like every other
+// script that touches it — a plain rewrite cut off mid-write is how it sat at 0 bytes for a week (2026-10-15 to 22)
 const remember = (stageId, to, via, at) => {
-  const overlay = readJson(OVERLAY_F, { edges: [], cycles: 0, shadow: [] });
+  const overlay = readJsonSafe(OVERLAY_F, { edges: [], cycles: 0, shadow: [] });
   overlay.edges.push({ from: `course:${stageId}`, to, type: 'mastered', weight: KAPPA, meta: { by: 'course', at, via: via.slice(0, 200) } });
-  writeJson(OVERLAY_F, overlay);
+  writeJsonSafe(OVERLAY_F, overlay);
 };
 
 // ── the drills: each returns { score, gradedBy, evidence, remember: [to, via] } ──
@@ -106,7 +111,7 @@ const DRILLS = {
   },
   async S5(at) {
     const stateBefore = readJson(join(DNA, 'operator-state.json'), { tally: {} });
-    const overlayBefore = readJson(OVERLAY_F, { edges: [] }).edges.length;
+    const overlayBefore = readJsonSafe(OVERLAY_F, { edges: [] }).edges.length;
     const run = spawnSync(process.execPath, [join(here, 'operate.mjs'), '--sweep'], { encoding: 'utf8', timeout: 300000 });
     const stateAfter = readJson(join(DNA, 'operator-state.json'), { tally: {} });
     const queue = readJson(join(DNA, 'operator-queue.json'), { items: [] });
@@ -115,28 +120,37 @@ const DRILLS = {
       validated: (stateAfter.tally.validated || 0) - (stateBefore.tally.validated || 0),
       doorsQueued: queue.items.filter(i => i.status === 'queued').length,
       executedUnsigned: queue.items.filter(i => i.executedAt && !(typeof i.signature === 'string' && i.signature)).length,
-      remembered: readJson(OVERLAY_F, { edges: [] }).edges.length > overlayBefore,
+      remembered: readJsonSafe(OVERLAY_F, { edges: [] }).edges.length > overlayBefore,
     };
     const score = run.status === 0 ? gradeCycle(log) : 0;
     return { score, gradedBy: 'gradeCycle', evidence: `a REAL sweep: produced ${log.produced}, validated ${log.validated}, ${log.doorsQueued} doors queued, ${log.executedUnsigned} unsigned executions, remembered=${log.remembered}`, rememberTo: ['memory:sididy-operator', 'the live loop ran human-gated'] };
   },
   async S6(at) {
-    const shadow = readJson(OVERLAY_F, { shadow: [] }).shadow || [];
-    const fresh = shadow.slice(-5).filter(w => w && w.root && w.node);
-    if (fresh.length < 2) return { refuse: 'the shadow surface is too thin — dream first, then expand' };
-    const [a, b] = fresh.slice(-2);
+    const { look, shadow } = loadLook();
+    const held = shadow.filter(w => w && typeof w.root === 'string' && typeof w.node === 'string');
+    // tonight's finds from the day's own work come first, strongest first, and they carry their route; the old tail of
+    // the shadow only when a night found none. Found 2026-10-22: the same tail pair was proposed night after night.
+    const lastAt = held.filter(w => w.fresh).map(w => String(w.at || '')).sort().at(-1);
+    const tonight = held.filter(w => w.fresh && String(w.at || '') === lastAt).sort((x, y) => (y.worth || 0) - (x.worth || 0) || (y.norm || 0) - (x.norm || 0));
+    const pool = tonight.length >= 2 ? tonight : held.slice(-5);
+    if (pool.length < 2) return { refuse: 'the shadow surface is too thin — dream first, then expand' };
+    const a = pool[0];
+    const b = pool.find(w => w.node !== a.node && w.root !== a.root) || pool.find(w => w.node !== a.node) || pool[1];
     const proposal = {
-      move: `${a.node} bundled with ${b.node} as a paired offer for whoever already runs ${a.root.replace(/^memory:/, '')}`,
+      move: `${a.node} bundled with ${b.node} as a paired offer for whoever already runs ${a.root.replace(/^(memory|chat):/, '')}`,
       grounds: [a.root, a.node, b.root, b.node],
       proposesOnly: true,
     };
     const score = gradeExpansion(proposal);
-    return { score, gradedBy: 'gradeExpansion', evidence: `proposed from the dream shadow: "${proposal.move}" — proposal only, the key-holder disposes`, rememberTo: [a.node, proposal.move] };
+    // the move stays the machine's handle (the wisp seeds its exams from it); what Simon reads is the plain version,
+    // said from the route the dream walked — every reason checkable, nothing invented (plainsay.mjs)
+    const said = sayIdea(a, b, look) || 'the dream kept no route for these two, so I cannot say why they came together';
+    return { score, gradedBy: 'gradeExpansion', evidence: `proposed from the dream shadow: "${proposal.move}" — proposal only, the key-holder disposes. In plain words: ${said}`, rememberTo: [a.node, proposal.move] };
   },
 };
 
 const args = process.argv.slice(2);
-let progress = readJson(PROGRESS_F, freshProgress());
+let progress = readJsonSafe(PROGRESS_F, freshProgress());
 
 if (args[0] === '--status') {
   console.log(`stage in front: ${current(progress).id} · ${current(progress).name}`);
@@ -162,8 +176,8 @@ for (;;) {
   console.log(`   evidence: ${drill.evidence}`);
   progress = out.progress;
   if (out.passed) remember(stage.id, drill.rememberTo[0], drill.rememberTo[1], at);
-  writeJson(PROGRESS_F, progress);
+  writeJsonSafe(PROGRESS_F, progress);
   if (!climbAll || !out.passed || progress.complete) break;
 }
-writeJson(PROGRESS_F, progress);
+writeJsonSafe(PROGRESS_F, progress);
 console.log(`\nnow in front: ${current(progress).id} · ${current(progress).name}${progress.complete ? ' — the course is complete; expansion never stops' : ''}`);

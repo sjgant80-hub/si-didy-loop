@@ -12,6 +12,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fan, gate, remember, dream, deepenTurn } from '../deepen.mjs';
+import { readJsonSafe, writeJsonSafe } from '../safejson.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const DNA = join(here, '..', 'local-dna', 'dna.json');
@@ -22,7 +23,7 @@ if (!existsSync(DNA)) {
   process.exit(2);
 }
 const dna = JSON.parse(readFileSync(DNA, 'utf8'));
-const overlay = existsSync(OVERLAY) ? JSON.parse(readFileSync(OVERLAY, 'utf8')) : { edges: [], cycles: 0, shadow: [] };
+const overlay = readJsonSafe(OVERLAY, { edges: [], cycles: 0, shadow: [] });
 
 // ── the contract graph: DNA (read-only) + overlay (writable), one view ──
 const nodes = new Map(dna.nodes.map(n => [n.id, n]));
@@ -54,19 +55,44 @@ const g = {
   },
 };
 
-const save = () => writeFileSync(OVERLAY, JSON.stringify(overlay, null, 1));
+const save = () => writeJsonSafe(OVERLAY, overlay);
 const args = process.argv.slice(2);
 
 if (args[0] === '--dream') {
+  const at = new Date().toISOString();
   // deterministic seed pool: the best-connected nodes, rotated by the persisted cycle count
   const degree = [...out.entries()].map(([id, es]) => [id, es.length]).sort((a, b) => b[1] - a[1]);
   const pool = degree.slice(0, 55).map(([id]) => id);
-  const d = dream(g, pool, overlay.cycles);
+  const d = dream(g, pool, overlay.cycles, { width: 21 });
   overlay.cycles += 1;
-  overlay.shadow = [...(overlay.shadow || []), ...d.held].slice(-233);   // the shadow holds, bounded
+  // AND the day's own work: every memory note and session that changed, and every repo pushed, in the last 36 hours,
+  // newest first, dreamed two at a time. Found 2026-10-22: the seeds were only ever the old hubs, so whatever Simon did
+  // that day never reached the dream unless it was already one of the most-connected things in the estate.
+  const age = (n) => Math.max(Number(n?.meta?.mtime) || 0, Date.parse(n?.meta?.pushed || '') || 0);
+  const now = Date.now();
+  const freshAll = [...nodes.values()].filter(n => now - age(n) < 36 * 3600 * 1000 && (out.get(n.id) || []).length)
+    .sort((a, b) => age(b) - age(a) || String(a.id).localeCompare(String(b.id))).map(n => n.id);
+  const fresh = freshAll.slice(0, 26), isFresh = new Set(freshAll);
+  // a find from the day's work is worth holding when it ARRIVES somewhere older that is a thing (a repo) or a lesson (a
+  // memory note): that is what was missed. Session-to-session arrivals say only that two chats named the same repo.
+  // And a route is only as telling as its middle step is SPECIFIC: through a hub every note names (witness) it says
+  // little, through a repo three notes name it says something. So a find is weighed by 1/log2(2 + the middle's links),
+  // and a route that only says "the note about X names X" is not a find at all.
+  const kind = (id) => nodes.get(id)?.type;
+  const mid = (h) => h.path?.[0]?.to;
+  const worth = (h) => (kind(h.node) === 'principle' ? 1 : 0.5) / Math.log2(2 + (out.get(mid(h)) || []).length);
+  const freshHeld = [];
+  for (let i = 0; i < fresh.length; i += 2) {
+    const fd = dream(g, fresh.slice(i, i + 2), 0, { width: 233 });
+    const finds = fd.held.filter(h => (kind(h.node) === 'repo' || kind(h.node) === 'principle') && !isFresh.has(h.node)
+      && h.node !== 'memory:' + mid(h));
+    freshHeld.push(...finds.sort((a, b) => worth(b) - worth(a)).slice(0, 5)
+      .map(h => ({ ...h, at, fresh: true, worth: Number(worth(h).toFixed(4)) })));
+  }
+  overlay.shadow = [...(overlay.shadow || []), ...d.held.map(h => ({ ...h, at, fresh: false })), ...freshHeld].slice(-233);   // the shadow holds, bounded
   save();
-  console.log(`dream cycle ${overlay.cycles - 1} · seeds ${d.seeds.join(', ')} · ${d.held.length} held open on the shadow surface (${overlay.shadow.length} held in all)`);
-  for (const h of d.held.slice(0, 8)) console.log(`  ◌ ${h.root} … ${h.node} (${h.norm.toFixed(3)}) — ${h.why}`);
+  console.log(`dream cycle ${overlay.cycles - 1} · seeds ${d.seeds.join(', ')} · ${d.held.length} held open on the shadow surface · from the day's own work: ${fresh.length} fresh node(s), ${freshHeld.length} held (${overlay.shadow.length} held in all)`);
+  for (const h of [...freshHeld, ...d.held].slice(0, 8)) console.log(`  ◌ ${h.root} … ${h.node} (${h.norm.toFixed(3)}) — ${h.why}`);
   process.exit(0);
 }
 

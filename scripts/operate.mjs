@@ -21,6 +21,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { webcrypto } from 'node:crypto';
+import { readJsonSafe, writeJsonSafe } from '../safejson.mjs';
 
 import { classify, signableItem, makeQueue, prepare, approve, executable, scoreboard } from '../operator.mjs';
 import { MANDATE, STREAMS, actionFor, coverage } from '../scope.mjs';
@@ -50,8 +51,8 @@ const subtle = webcrypto.subtle;
 const enc = new TextEncoder();
 const sha = async (s) => Array.from(new Uint8Array(await subtle.digest('SHA-256', enc.encode(s))))
   .map(b => b.toString(16).padStart(2, '0')).join('');
-const readJson = (f, fallback) => existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : fallback;
-const writeJson = (f, v) => writeFileSync(f, JSON.stringify(v, null, 1));
+const readJson = (f, fallback) => readJsonSafe(f, fallback);
+const writeJson = (f, v) => writeJsonSafe(f, v);
 
 // si-didy's own identity — created on first run, and provably NOT the master key
 async function ownKey() {

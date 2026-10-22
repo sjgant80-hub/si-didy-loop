@@ -15,6 +15,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fan, gate, remember, dream, deepenTurn } from '../deepen.mjs';
+import { readJsonSafe, writeJsonSafe } from '../safejson.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const DNA = join(here, '..', 'local-dna', 'dna.json');
@@ -25,8 +26,7 @@ if (!existsSync(DNA)) {
   process.exit(2);
 }
 const dna = JSON.parse(readFileSync(DNA, 'utf8'));
-const overlay = existsSync(OVERLAY) ? JSON.parse(readFileSync(OVERLAY, 'utf8'))
-  : { edges: [], cycles: 0, shadow: [], cursor: 0, studied: 0 };
+const overlay = readJsonSafe(OVERLAY, { edges: [], cycles: 0, shadow: [], cursor: 0, studied: 0 });
 overlay.cursor = Number.isFinite(overlay.cursor) ? overlay.cursor : 0;
 overlay.studied = Number.isFinite(overlay.studied) ? overlay.studied : 0;
 
@@ -59,7 +59,7 @@ const g = {
 
 // the syllabus: every node that has anything to associate from, in one stable order
 const syllabus = [...nodes.keys()].filter(id => (out.get(id) || []).length > 0).sort();
-const save = () => writeFileSync(OVERLAY, JSON.stringify(overlay, null, 1));
+const save = () => writeJsonSafe(OVERLAY, overlay);
 
 if (process.argv.includes('--status')) {
   console.log(`the study: ${overlay.studied}/${syllabus.length} contexts studied · cursor at ${overlay.cursor}`);

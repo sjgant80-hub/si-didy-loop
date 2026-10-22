@@ -178,9 +178,25 @@ const BANNED = /\b(require|import|export|fetch|XMLHttpRequest|WebSocket|process|
  */
 export function extractCode(text, expectedName) {
   const t = str(text).replace(/```[a-z]*\n?/gi, '').replace(/```/g, '');
-  const at = t.indexOf('function ' + str(expectedName));
-  if (at < 0) return { ok: false, why: `the wisp did not produce a function named ${str(expectedName) || '(unnamed)'}` };
-  const code = t.slice(at).trim();
+  const name = str(expectedName);
+  const at = t.indexOf('function ' + name);
+  let code = at >= 0 ? t.slice(at).trim() : '';
+  if (at < 0) {
+    // Two ways a right answer was refused, both found 2026-10-22 and both now taken, renamed to the full name, then
+    // screened and examined exactly like any other answer:
+    //   the hash dropped or miscopied — "function scorecardScore(dims)" for scorecardScore_2ae8f67d, or
+    //   invoiceTotals_c0ca2209 for invoiceTotals_c0ca2109 (a small model copies eight hex digits badly);
+    //   an arrow bound to the name — "panelAgreement_32f57879 = (scores) => {…}", which the field's strict mode would
+    //   throw on as an undeclared assignment, so it is made a const.
+    const base = /^([A-Za-z_][A-Za-z0-9_]*)_[0-9a-f]{8}$/.exec(name);
+    const short = base ? base[1] + '(?:_[0-9a-f]{8})?' : '';
+    const decl = short ? new RegExp('function ' + short + '(?=\\s*\\()').exec(t) : null;
+    const names = [/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ? name : '', short].filter(Boolean);
+    const bound = names.length ? new RegExp('(?:\\b(?:const|let|var)\\s+)?\\b(?:' + names.join('|') + ')\\s*=(?![=>])').exec(t) : null;
+    if (decl) code = ('function ' + name + t.slice(decl.index + decl[0].length)).trim();
+    else if (bound) code = ('const ' + name + ' =' + t.slice(bound.index + bound[0].length)).trim();
+    else return { ok: false, why: `the wisp did not produce a function named ${name || '(unnamed)'}` };
+  }
   const hit = code.match(BANNED);
   if (hit) return { ok: false, why: `the generated code reaches for "${hit[0]}" — pure computation only; refused before it can run` };
   return { ok: true, code };

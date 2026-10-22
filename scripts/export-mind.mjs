@@ -12,6 +12,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readJsonSafe } from '../safejson.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const DNA = join(here, '..', 'local-dna', 'dna.json');
@@ -23,7 +24,7 @@ if (!existsSync(DNA) || !existsSync(OVERLAY)) {
   process.exit(2);
 }
 const dna = JSON.parse(readFileSync(DNA, 'utf8'));
-const overlay = JSON.parse(readFileSync(OVERLAY, 'utf8'));
+const overlay = readJsonSafe(OVERLAY, { edges: [], shadow: [] });   // a bad overlay is set aside loudly, never the night's end
 const KAPPA = (Math.sqrt(5) - 1) / 2;
 
 const types = new Map(dna.nodes.map(n => [n.id, n.type]));

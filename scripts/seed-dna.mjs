@@ -51,7 +51,8 @@ const byTopic = new Map();
 let repoCount = 0;
 for (const r of repos) {
   if (!r || typeof r.name !== 'string') continue;
-  addNode(r.name, 'repo', { src: 'estate-index', desc: String(r.desc || r.description || '').slice(0, 140), private: !!r.private });
+  // pushed rides on the node so a night can dream from what moved today, not only from the old hubs (2026-10-22)
+  addNode(r.name, 'repo', { src: 'estate-index', desc: String(r.desc || r.description || '').slice(0, 140), private: !!r.private, pushed: typeof r.pushed === 'string' ? r.pushed : '' });
   repoCount++;
   for (const t of (Array.isArray(r.topics) ? r.topics : [])) {
     if (!byTopic.has(t)) byTopic.set(t, []);
@@ -73,16 +74,31 @@ for (const [topic, members] of byTopic) {
 
 // ── 2 · the memory docs: principles, their repo mentions, their wiki-links ──
 const repoNames = [...nodes.keys()].filter(n => n.length >= 5);   // short names false-positive too easily
+// mentions are found by WHOLE WORDS, read once per text: every word looked up in a set of the names (one pass), not every
+// name searched through every text (1,800 scans of each 1MB window — found 2026-10-22 to take 15 minutes over the 1.2GB
+// of sessions and growing every day, until the nightly's 30-minute limit killed the seed and the whole night with it).
+// A name with characters a word cannot hold (a dot) is still searched as text; there are two.
+const nameSet = new Set(repoNames.filter(n => /^[A-Za-z0-9_-]+$/.test(n))), oddNames = repoNames.filter(n => !nameSet.has(n));
+const WORD = /[A-Za-z0-9][A-Za-z0-9_-]*/g;
+/** how often each repo name is mentioned in a text, by whole word (and, for the few names with a dot, by text) */
+const mentionsIn = (text, into = new Map()) => {
+  for (const m of text.matchAll(WORD)) {
+    const w = m[0].replace(/[-_]+$/, '');
+    if (nameSet.has(w)) into.set(w, (into.get(w) || 0) + 1);
+  }
+  for (const name of oddNames) { let i = -1, c = 0; while ((i = text.indexOf(name, i + 1)) !== -1) c++; if (c) into.set(name, (into.get(name) || 0) + c); }
+  return into;
+};
 let docCount = 0, mentionEdges = 0, linkEdges = 0;
 for (const f of readdirSync(MEMORY_DIR)) {
   if (!f.endsWith('.md') || f === 'MEMORY.md') continue;
   const id = 'memory:' + f.replace(/\.md$/, '');
   const text = readFileSync(join(MEMORY_DIR, f), 'utf8');
-  addNode(id, 'principle', { src: 'estate-memory', file: f });
+  let mtime = 0;
+  try { mtime = statSync(join(MEMORY_DIR, f)).mtimeMs; } catch { /* unknown age reads as old, never as new */ }
+  addNode(id, 'principle', { src: 'estate-memory', file: f, mtime });
   docCount++;
-  for (const name of repoNames) {
-    if (text.includes(name)) { addEdge(id, name, 'reuses', { as: 'mentions' }); mentionEdges++; }
-  }
+  for (const name of mentionsIn(text).keys()) { addEdge(id, name, 'reuses', { as: 'mentions' }); mentionEdges++; }
   for (const m of text.matchAll(/\[\[([a-z0-9-]+)\]\]/g)) {
     const other = 'memory:' + m[1];
     addEdge(id, other, 'kin', { as: 'wiki-link' });
@@ -95,34 +111,48 @@ for (const f of readdirSync(MEMORY_DIR)) {
 //        Mention frequency becomes edge weight: a repo named forty times in a session is a
 //        stronger associate than one named once. Files are read in 1MB windows so a 100MB
 //        session neither loads whole nor gets skipped.
+// what was SAID in a session: the user's and the assistant's own words, with the system's reminders cut out. Found
+// 2026-10-22: counted raw, every session "talked about" everything in the memory index, because the index rides in each
+// session's system text and in every file read of it (one session "talked about" niceassos 205 times and never once
+// did). Tool output is not talk either: a directory listing names a hundred repos nobody discussed.
+const saidIn = (line) => {
+  let o;
+  try { o = JSON.parse(line); } catch { return ''; }
+  if (!o || (o.type !== 'user' && o.type !== 'assistant')) return '';
+  const c = o.message?.content;
+  const parts = typeof c === 'string' ? [c] : Array.isArray(c) ? c.filter(p => p && p.type === 'text' && typeof p.text === 'string').map(p => p.text) : [];
+  return parts.join('\n').replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, ' ');
+};
 let chatCount = 0, chatEdges = 0;
 for (const dir of CHAT_DIRS) {
   let files = [];
   try { files = readdirSync(dir).filter(f => f.endsWith('.jsonl') || f.endsWith('.md')); } catch { continue; }
   for (const f of files) {
     const path = join(dir, f);
-    let size = 0;
-    try { size = statSync(path).size; } catch { continue; }
+    let size = 0, mtime = 0;
+    try { const st = statSync(path); size = st.size; mtime = st.mtimeMs; } catch { continue; }
     // a CC session under 10KB is bookkeeping noise; an imported chat (.md) is already distilled —
     // even a short one is a real conversation, so its floor is only "not empty".
     if (size < (f.endsWith('.md') ? 300 : 10000)) continue;
     const counts = new Map();
     const fd = openSync(path, 'r');
     const buf = Buffer.alloc(1 << 20);
+    const isSession = f.endsWith('.jsonl');
+    let rest = '';
     for (let off = 0; off < size; off += buf.length) {
       const n = readSync(fd, buf, 0, buf.length, off);
       if (n <= 0) break;
-      const win = buf.toString('utf8', 0, n);
-      for (const name of repoNames) {
-        let i = -1, c = 0;
-        while ((i = win.indexOf(name, i + 1)) !== -1) c++;
-        if (c) counts.set(name, (counts.get(name) || 0) + c);
-      }
+      const text = buf.toString('utf8', 0, n);
+      if (!isSession) { mentionsIn(text, counts); continue; }
+      const lines = (rest + text).split('\n');
+      rest = lines.pop();
+      for (const line of lines) mentionsIn(saidIn(line), counts);
     }
+    if (isSession && rest) mentionsIn(saidIn(rest), counts);
     closeSync(fd);
     if (!counts.size) continue;                            // a session that names no repo teaches no edges
     const id = 'chat:' + basename(f, '.jsonl').slice(0, 12);
-    addNode(id, 'chat', { src: 'cc-chats', file: f, project: basename(dir) });
+    addNode(id, 'chat', { src: 'cc-chats', file: f, project: basename(dir), mtime, day: new Date(mtime).toISOString().slice(0, 10) });
     chatCount++;
     for (const [name, c] of counts) {
       addEdge(id, name, 'reuses', { as: 'discussed', mentions: c }, Math.min(1, 0.4 + c * 0.05));

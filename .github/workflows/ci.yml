@@ -35,3 +35,18 @@ jobs:
       - name: witness — the lessons fold (must be CLEAN)
         run: |
           node /tmp/witness/witness.mjs mutate lessonsfold.mjs             --timeout 60000 --cap 600 --baseline witness.baseline.json             --test node --test lessonsfold.test.mjs
+      # 2026-10-22, the night Kar learned to say what he means: the dream keeps its route (deepen), the route is said in
+      # plain words (plainsay), the brief says it and says when the rail refuses (brief), and the wisp's screen takes a
+      # right answer in any of the shapes a small model writes it (wispwire). Each gated here, not only on the laptop.
+      - name: witness — the dream holds its route (must be CLEAN)
+        run: |
+          node /tmp/witness/witness.mjs mutate deepen.mjs             --timeout 60000 --cap 600 --baseline witness.baseline.json             --test node --test deepen.test.mjs
+      - name: witness — plain words from the evidence alone (must be CLEAN)
+        run: |
+          node /tmp/witness/witness.mjs mutate plainsay.mjs             --timeout 60000 --cap 600 --baseline witness.baseline.json             --test node --test plainsay.test.mjs
+      - name: witness — the morning brief (must be CLEAN)
+        run: |
+          node /tmp/witness/witness.mjs mutate brief.mjs             --timeout 60000 --cap 600 --baseline witness.baseline.json             --test node --test brief.test.mjs
+      - name: witness — the wisp's screen (must be CLEAN)
+        run: |
+          node /tmp/witness/witness.mjs mutate wispwire.mjs             --timeout 60000 --cap 600 --baseline witness.baseline.json             --test node --test wispwire.test.mjs

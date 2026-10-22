@@ -45,6 +45,18 @@ export function distill(inputs, nowMs) {
   const railUp = !!railConf && railConf.platform === 'facebook-page' && !!str(railConf.pageId) && !!str(railConf.token);
   const sentLastDay = arr(obj(i.railHistory)?.sent).map(obj).filter(Boolean)
     .filter(h => Number.isFinite(h.sentAtMs) && now - h.sentAtMs < DAY).length;
+  // configured is not working: a refusal newer than the last post that went is said, with the platform's own reason.
+  // Found 2026-10-22: the brief said "● up" every morning while Facebook refused every post for want of page
+  // permissions. The reason is the platform's text, and the token is cut out of it all the same — no token, ever.
+  const lastSent = Math.max(0, ...arr(obj(i.railHistory)?.sent).map(obj).filter(Boolean).map(h => Number.isFinite(h.sentAtMs) ? h.sentAtMs : 0));
+  const refusal = obj(obj(i.railHistory)?.lastRefusal);
+  const tok = str(railConf?.token);
+  const refusedWhy = refusal && Number.isFinite(refusal.atMs) && refusal.atMs > lastSent
+    ? (tok ? str(refusal.why).split(tok).join('[token]') : str(refusal.why)).replace(/\s+/g, ' ').trim().slice(0, 300) || 'no reason given'
+    : '';
+
+  // what the dream found, already said in plain words by the runner (plainsay.mjs) — at most five, never re-worded here
+  const dreamt = arr(i.dreamt).filter(s => typeof s === 'string' && s.trim()).slice(0, 5);
 
   const progress = obj(i.progress) || {};
   const s6 = arr(progress.attempts).map(obj).filter(Boolean).filter(a => a.stage === 'S6' && str(a.evidence)).at(-1);
@@ -54,6 +66,8 @@ export function distill(inputs, nowMs) {
   // second derivation here would be a second source of truth waiting to drift
   const firstAction = !railUp
     ? { what: 'Paste the rail token — five minutes, then posting is autonomous', how: 'node scripts/rail.mjs --init  (steps printed; token goes in local-dna/rail-config.json by your hand)' }
+    : refusedWhy
+      ? { what: 'The rail is set up but the platform refuses every post — the page token needs what it names', how: refusedWhy }
     : doors.length
       ? { what: `Turn or close ${doors.length} waiting door(s)`, how: 'node scripts/master-key.mjs --list' }
       : proposal
@@ -64,7 +78,10 @@ export function distill(inputs, nowMs) {
     kind: 'morning-brief',
     at: new Date(now).toISOString(),
     builds, doors, outboxWaiting,
-    rail: railUp ? { up: true, why: `up — ${sentLastDay} post(s) in the last day` } : { up: false, why: 'not configured — the outbox holds' },
+    rail: !railUp ? { up: false, why: 'not configured — the outbox holds' }
+      : refusedWhy ? { up: false, why: `configured, but the platform refused the last post: ${refusedWhy}` }
+      : { up: true, why: `up — ${sentLastDay} post(s) in the last day` },
+    dreamt,
     tally: { produced: Number(tally.produced) || 0, validated: Number(tally.validated) || 0, internalSupply: Number(tally.internalSupply) || 0, reuseDepth: Number(tally.reuseDepth) || 0 },
     courseComplete: progress.complete === true,
     proposal,
@@ -99,8 +116,16 @@ ${arr(b.builds).length ? arr(b.builds).map(x => `<div class="row">built <b>${esc
 ${arr(b.doors).length ? arr(b.doors).map(d => `<div class="row">[${d.seq}] ${esc(d.stream)} · ${esc(d.cap)} — <span class="dim">queued unsigned</span></div>`).join('') : '<div class="row dim">no doors waiting</div>'}
 <h2>the rail</h2>
 <div class="row">${obj(b.rail)?.up ? '●' : '○'} ${esc(obj(b.rail)?.why)} · ${Number(b.outboxWaiting) || 0} draft(s) in the outbox</div>
+<h2>what I dreamed, in plain words</h2>
+${arr(b.dreamt).length ? arr(b.dreamt).map(s => `<div class="row">◌ ${esc(s)}</div>`).join('') : '<div class="row dim">the dream kept nothing it could say a reason for last night</div>'}
 <h2>si-didy proposes</h2>
-<div class="row">${b.proposal ? esc(b.proposal) : '<span class="dim">no fresh proposal — the next dream brings one</span>'}</div>
+${(() => {
+    const p = str(b.proposal);
+    if (!p) return '<div class="row"><span class="dim">no fresh proposal — the next dream brings one</span></div>';
+    const at = p.indexOf(' In plain words: ');
+    return at < 0 ? `<div class="row">${esc(p)}</div>`
+      : `<div class="row">${esc(p.slice(at + 17))}</div><div class="row dim">the machine's handle: ${esc(p.slice(0, at))}</div>`;
+  })()}
 <footer>generated from local-dna — private, local only, never published · the course ${b.courseComplete ? 'is complete; expansion never stops' : 'is climbing'}</footer>
 </body></html>`;
 }

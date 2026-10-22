@@ -111,10 +111,15 @@ if (args[0] === '--post-next') {
     post.sentAtMs = sentAtMs; post.postId = res.body.id;
     writeJson(HISTORY_F, history); writeJson(OUTBOX_F, outbox);
     console.log(`✓ POSTED on the sanctioned rail — post id ${res.body.id}. Measure follows on the next --measure.`);
-    process.exit(0);
+    process.exitCode = 0;
+  } else {
+    const why = res.body?.error?.message || 'no error message';
+    console.log(`✗ the rail refused the post: HTTP ${res.status} — ${why}. The draft stays in the outbox.`);
+    // the refusal is kept, so the morning brief says the rail is refusing instead of "up" (2026-10-22)
+    history.lastRefusal = { atMs: Date.now(), status: res.status, why: String(why).slice(0, 500) };
+    writeJson(HISTORY_F, history);
+    process.exitCode = 1;
   }
-  console.log(`✗ the rail refused the post: HTTP ${res.status} — ${res.body?.error?.message || 'no error message'}. The draft stays in the outbox.`);
-  process.exit(1);
 }
 
 if (args[0] === '--measure') {
@@ -137,9 +142,14 @@ if (args[0] === '--measure') {
     for (const r of ranked.slice(0, 3)) console.log(`  ${r.engagement.toString().padStart(4)} — "${r.hook}"`);
     console.log('the next draft starts from the top hook — post, measure, adjust, post better.');
   } else console.log('nothing measured yet — post first, then measure.');
-  process.exit(0);
+  process.exitCode = 0;
 }
 
-console.log('usage: --init | --status | --post-next | --measure');
-console.log(railReady(config).why);
-process.exit(1);
+// after a fetch the process ENDS by itself (exitCode), never by process.exit: on Windows, Node 25 aborts with a libuv
+// assertion (UV_HANDLE_CLOSING) when process.exit lands while a socket is still closing — found 2026-10-22, it ate the
+// night's one line saying why the rail refused
+if (args[0] !== '--post-next' && args[0] !== '--measure') {
+  console.log('usage: --init | --status | --post-next | --measure');
+  console.log(railReady(config).why);
+  process.exit(1);
+}

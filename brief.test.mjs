@@ -149,3 +149,67 @@ test('FUZZ: total on garbage', () => {
   assert.deepEqual(b.builds, [], 'undateable builds are not last night');
   assert.ok(true);
 });
+
+test('CONFIGURED IS NOT WORKING — a refusal newer than the last post that went says so, with the platform\'s reason', () => {
+  // 2026-10-22: the brief said "● up" every morning while the platform refused every post
+  const why = 'requires both pages_read_engagement and pages_manage_posts';
+  const refused = distill({ ...INPUTS(), railHistory: { sent: [{ sentAtMs: NOW - 30 * HOUR }], lastRefusal: { atMs: NOW - HOUR, status: 403, why } } }, NOW);
+  assert.equal(refused.rail.up, false);
+  assert.equal(refused.rail.why, 'configured, but the platform refused the last post: ' + why);
+  assert.equal(refused.firstAction.what, 'The rail is set up but the platform refuses every post — the page token needs what it names');
+  assert.equal(refused.firstAction.how, why);
+  // a refusal before the last post that went is history: the rail worked after it
+  const healed = distill({ ...INPUTS(), railHistory: { sent: [{ sentAtMs: NOW - 2 * HOUR }], lastRefusal: { atMs: NOW - 3 * HOUR, why } } }, NOW);
+  assert.equal(healed.rail.up, true);
+  assert.match(healed.firstAction.what, /Turn or close/);
+  // at the very same moment as the last send it is not newer, so it is not a refusal now
+  const tie = distill({ ...INPUTS(), railHistory: { sent: [{ sentAtMs: NOW - 2 * HOUR }], lastRefusal: { atMs: NOW - 2 * HOUR, why } } }, NOW);
+  assert.equal(tie.rail.up, true);
+  // never sent at all: any refusal is newer
+  const never = distill({ ...INPUTS(), railHistory: { sent: [], lastRefusal: { atMs: 5, why } } }, NOW);
+  assert.equal(never.rail.up, false);
+  // a refusal with no time is not dated, so it is not said
+  assert.equal(distill({ ...INPUTS(), railHistory: { sent: [], lastRefusal: { why } } }, NOW).rail.up, true);
+  // an empty reason still says a refusal happened
+  assert.equal(distill({ ...INPUTS(), railHistory: { sent: [], lastRefusal: { atMs: 5, why: '   ' } } }, NOW).rail.why, 'configured, but the platform refused the last post: no reason given');
+  // the not-configured rail still ranks first, refusal or none
+  assert.match(distill({ ...INPUTS(), railConfig: null, railHistory: { sent: [], lastRefusal: { atMs: 5, why } } }, NOW).firstAction.what, /Paste the rail token/);
+});
+
+test('A REFUSAL NEVER CARRIES THE TOKEN — cut out wherever it appears, and long reasons are cut at 300', () => {
+  const why = 'bad token EAAG-secret-token for page, again EAAG-secret-token';
+  const b = distill({ ...INPUTS(), railHistory: { sent: [], lastRefusal: { atMs: 5, why } } }, NOW);
+  assert.ok(!JSON.stringify(b).includes('EAAG-secret-token'), 'the distilled brief carries no token');
+  assert.ok(!renderBrief(b).includes('EAAG-secret-token'), 'the page carries no token');
+  assert.equal(b.firstAction.how, 'bad token [token] for page, again [token]');
+  const long = distill({ ...INPUTS(), railHistory: { sent: [], lastRefusal: { atMs: 5, why: 'x'.repeat(400) } } }, NOW);
+  assert.equal(long.firstAction.how.length, 300);
+  assert.equal(distill({ ...INPUTS(), railHistory: { sent: [], lastRefusal: { atMs: 5, why: 'a\n   b\tc' } } }, NOW).firstAction.how, 'a b c', 'whitespace folds to single spaces');
+});
+
+test('THE DREAM IS SAID AS THE RUNNER SAID IT — five at most, blanks dropped, escaped on the page', () => {
+  const said = ['one', '', '  ', 7, 'two', 'three', 'four', 'five', 'six'];
+  const b = distill({ ...INPUTS(), dreamt: said }, NOW);
+  assert.deepEqual(b.dreamt, ['one', 'two', 'three', 'four', 'five']);
+  assert.deepEqual(distill({ ...INPUTS(), dreamt: 'not a list' }, NOW).dreamt, []);
+  const html = renderBrief(distill({ ...INPUTS(), dreamt: ['<b>x</b> led me to y'] }, NOW));
+  assert.match(html, /what I dreamed, in plain words/);
+  assert.match(html, /◌ &lt;b&gt;x&lt;\/b&gt; led me to y/);
+  assert.match(renderBrief(distill(INPUTS(), NOW)), /the dream kept nothing it could say a reason for last night/);
+});
+
+test('A PROPOSAL WITH PLAIN WORDS LEADS WITH THEM — the machine handle sits under it, dim', () => {
+  const ev = 'proposed from the dream shadow: "a bundled with b" — proposal only. In plain words: I think a and b belong together.';
+  const html = renderBrief(distill({ ...INPUTS(), progress: { attempts: [{ stage: 'S6', evidence: ev }] } }, NOW));
+  assert.ok(html.includes('<div class="row">I think a and b belong together.</div><div class="row dim">the machine\'s handle: proposed from the dream shadow: "a bundled with b" — proposal only.</div>'));
+  // the very start counts: a proposal that is ONLY plain words still splits
+  const only = renderBrief(distill({ ...INPUTS(), progress: { attempts: [{ stage: 'S6', evidence: 'x In plain words: y' }] } }, NOW));
+  assert.ok(only.includes('<div class="row">y</div><div class="row dim">the machine\'s handle: x</div>'));
+  const none = renderBrief(distill({ ...INPUTS(), progress: { attempts: [{ stage: 'S6', evidence: 'no plain part' }] } }, NOW));
+  assert.ok(none.includes('<div class="row">no plain part</div>'));
+});
+
+test('PLAIN WORDS AT THE VERY START STILL SPLIT — position zero is a place, not an absence', () => {
+  const html = renderBrief(distill({ ...INPUTS(), progress: { attempts: [{ stage: 'S6', evidence: ' In plain words: y' }] } }, NOW));
+  assert.ok(html.includes('<div class="row">y</div><div class="row dim">the machine\'s handle: </div>'));
+});
