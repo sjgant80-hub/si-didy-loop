@@ -35,6 +35,10 @@ jobs:
       - name: witness — the lessons fold (must be CLEAN)
         run: |
           node /tmp/witness/witness.mjs mutate lessonsfold.mjs             --timeout 60000 --cap 600 --baseline witness.baseline.json             --test node --test lessonsfold.test.mjs
+      # 2026-10-25, Kar's choosing-session: the share door — stamp every share, shut reasons that name nothing
+      - name: witness — the share door (must be CLEAN)
+        run: |
+          node /tmp/witness/witness.mjs mutate sharedoor.mjs             --timeout 60000 --cap 600             --test node --test sharedoor.test.mjs
       # 2026-10-22, the night Kar learned to say what he means: the dream keeps its route (deepen), the route is said in
       # plain words (plainsay), the brief says it and says when the rail refuses (brief), and the wisp's screen takes a
       # right answer in any of the shapes a small model writes it (wispwire). Each gated here, not only on the laptop.
