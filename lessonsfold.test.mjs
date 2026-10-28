@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { foldLessons } from './lessonsfold.mjs';
+import { foldLessons, foldDreams } from './lessonsfold.mjs';
 
 // --- validation ---
 test('rejects non-array shares', () => {
@@ -177,4 +177,50 @@ test('real-shape smoke: HysteresisGate recurring six times outranks a two-time l
   assert.equal(r.lessons[0].count, 6);
   assert.equal(r.lessons[1].title, 'TrustDecay');
   assert.equal(r.lessons[1].count, 2);
+});
+
+// ── foldDreams: the resident's own dream titles, counted over the last nights ──
+const NOW = '2026-10-28T12:00:00.000Z';
+const at = (hoursBefore) => new Date(Date.parse(NOW) - hoursBefore * 3600000).toISOString();
+const dream = (title, hoursBefore) => ({ kind: 'dream', title, detail: 'never read', ts: at(hoursBefore) });
+
+test('foldDreams: refuses what is not a ledger, a time, or a sane window', () => {
+  assert.deepEqual(foldDreams(null, { now: NOW }), { ok: false, why: 'ledger must be an array' });
+  assert.deepEqual(foldDreams({}, { now: NOW }), { ok: false, why: 'ledger must be an array' });
+  for (const o of [null, 5, 'x']) assert.deepEqual(foldDreams([], o), { ok: false, why: 'opts must be an object' });
+  for (const now of [undefined, 5, 'yesterday', '']) assert.deepEqual(foldDreams([], { now }), { ok: false, why: 'opts.now must be an ISO time' });
+  assert.deepEqual(foldDreams([]), { ok: false, why: 'opts.now must be an ISO time' });
+  for (const days of [0, -1, NaN, Infinity, '14']) assert.deepEqual(foldDreams([], { now: NOW, days }), { ok: false, why: 'opts.days must be a finite number > 0' });
+  for (const minCount of [0, 0.5, -1, NaN, '2']) assert.deepEqual(foldDreams([], { now: NOW, minCount }), { ok: false, why: 'opts.minCount must be a finite number >= 1' });
+  assert.deepEqual(foldDreams([], { now: NOW, days: 0.5, minCount: 1 }), { ok: true, lessons: [] });
+});
+
+test('foldDreams: one title however it is spelled, counted in the window, named as last dreamed', () => {
+  const ledger = [dream('PathFinder', 300), dream('pathfinder', 200), dream('Path Finder (revision 2)', 100), dream('ColorBlender', 50), dream('Color-Blender', 40), dream('Lonely', 30)];
+  assert.deepEqual(foldDreams(ledger, { now: NOW }), { ok: true, lessons: [{ title: 'Path Finder', count: 3, lastAt: at(100) }, { title: 'Color-Blender', count: 2, lastAt: at(40) }] });
+  assert.deepEqual(foldDreams(ledger, { now: NOW, minCount: 3 }).lessons.map((l) => l.title), ['Path Finder']);
+  assert.deepEqual(foldDreams(ledger, { now: NOW, minCount: 1 }).lessons.map((l) => [l.title, l.count]), [['Path Finder', 3], ['Color-Blender', 2], ['Lonely', 1]]);
+});
+
+test('foldDreams: only dreams, only with a time, only in the window', () => {
+  const ledger = [
+    dream('Edge', 14 * 24), dream('Edge', 14 * 24 - 1),               // exactly at the window's start: out; an hour later: in
+    dream('Late', -1), dream('Late', 0), dream('Late', 1),            // after now: out; at now: in
+    { kind: 'note', title: 'Late', ts: at(2) }, { kind: 'render', title: 'Late', ts: at(2) },
+    { kind: 'dream', title: 'Late' }, { kind: 'dream', title: 'Late', ts: 5 }, null, 5, 'dream', [dream('Late', 2)],
+    { kind: 'dream', title: 7, ts: at(3) }, { kind: 'dream', title: '!!!', ts: at(3) }, { kind: 'dream', title: '!!!', ts: at(4) },
+  ];
+  const r = foldDreams(ledger, { now: NOW, minCount: 1 });
+  assert.deepEqual(r.lessons.map((l) => [l.title, l.count]), [['Late', 2], ['Edge', 1]]);
+  assert.equal(foldDreams([dream('Old', 15 * 24), dream('Old', 16 * 24)], { now: NOW }).lessons.length, 0);
+  assert.equal(foldDreams([dream('Old', 15 * 24), dream('Old', 16 * 24)], { now: NOW, days: 17 }).lessons.length, 1);
+});
+
+test('foldDreams: most dreamed first, then by title; a tie in time keeps the later entry\'s spelling', () => {
+  const ledger = [dream('b', 5), dream('B', 4), dream('a', 3), dream('A', 2), dream('c', 1), dream('c', 1), dream('C', 1)];
+  assert.deepEqual(foldDreams(ledger, { now: NOW }).lessons.map((l) => [l.title, l.count]), [['C', 3], ['A', 2], ['B', 2]]);
+  const same = [{ kind: 'dream', title: 'first spelling', ts: at(1) }, { kind: 'dream', title: 'First Spelling', ts: at(1) }];
+  assert.equal(foldDreams(same, { now: NOW }).lessons[0].title, 'First Spelling');
+  const earlierLast = [dream('Zed', 1), dream('zed', 9)];
+  assert.deepEqual(foldDreams(earlierLast, { now: NOW }).lessons[0], { title: 'Zed', count: 2, lastAt: at(1) });
 });

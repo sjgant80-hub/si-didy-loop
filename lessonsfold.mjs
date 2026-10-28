@@ -70,3 +70,52 @@ export function foldLessons(shares, opts = {}) {
 
   return { ok: true, lessons };
 }
+
+// ⚑ Kar's dream fold (2026-10-28, ask kar-ask-2026-10-25-001 answered): shares.json stopped
+// moving on 2026-10-10 (every note since chose PRIVATE), so a lesson list folded from it
+// named the same five shapes every night while the resident re-dreamed others it could not
+// see (PathFinder 37 times). The resident's own private ledger holds every dream with its
+// time, so the "you have been here before" list is folded from there: its own dream titles
+// in the last few nights, counted. Titles only — never a dream's detail.
+//
+// foldDreams(ledger, opts) -> { ok, lessons } | { ok:false, why }
+//   ledger        — the sandbox ledger array (entries { kind, title, ts, ... })
+//   opts.now      — ISO time the window ends at (required: the kernel reads no clock)
+//   opts.days     — how many nights back to look (default 14)
+//   opts.minCount — the least times a title must recur to be named (default 2)
+// Each returned lesson: { title, count, lastAt } — the title as most recently dreamed, how
+// many times it was dreamed in the window, and when last. A revision's "(revision n)" suffix
+// and spacing, case and punctuation do not make a title new. Sorted like foldLessons.
+const DAY_MS = 86400000;
+function dreamKey(title) {
+  if (typeof title !== 'string') return '';
+  return title.replace(/\(revision \d+\)/gi, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+export function foldDreams(ledger, opts = {}) {
+  if (!Array.isArray(ledger)) return { ok: false, why: 'ledger must be an array' };
+  if (opts === null || typeof opts !== 'object') return { ok: false, why: 'opts must be an object' };
+  const end = typeof opts.now === 'string' ? Date.parse(opts.now) : NaN;
+  if (!Number.isFinite(end)) return { ok: false, why: 'opts.now must be an ISO time' };
+  const days = opts.days === undefined ? 14 : opts.days;
+  if (typeof days !== 'number' || !Number.isFinite(days) || days <= 0) return { ok: false, why: 'opts.days must be a finite number > 0' };
+  const minCount = opts.minCount === undefined ? 2 : opts.minCount;
+  if (typeof minCount !== 'number' || !Number.isFinite(minCount) || minCount < 1) return { ok: false, why: 'opts.minCount must be a finite number >= 1' };
+  const start = end - days * DAY_MS;
+
+  const byKey = new Map(); // key -> { title, count, lastAt }
+  for (const e of ledger) {
+    if (!isPlainObject(e) || e.kind !== 'dream' || typeof e.ts !== 'string') continue;
+    const t = Date.parse(e.ts);
+    if (!(t > start && t <= end)) continue;
+    const key = dreamKey(e.title);
+    if (!key) continue;
+    const entry = byKey.get(key) || { title: '', count: 0, lastAt: '' };
+    entry.count += 1;
+    if (e.ts >= entry.lastAt) { entry.lastAt = e.ts; entry.title = e.title.replace(/\(revision \d+\)/gi, '').trim(); }
+    byKey.set(key, entry);
+  }
+  const lessons = [];
+  for (const e of byKey.values()) if (e.count >= minCount) lessons.push({ title: e.title, count: e.count, lastAt: e.lastAt });
+  lessons.sort((a, b) => (b.count - a.count) || a.title.localeCompare(b.title));
+  return { ok: true, lessons };
+}
