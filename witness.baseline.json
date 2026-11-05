@@ -38,5 +38,15 @@
     "mutation": "< → <=",
     "snippet": "if (at && (entry.firstAt === null || at < entry.firstAt)) entry.firstAt = at;",
     "reason": "Genuinely equivalent: on a tied earliest timestamp, entry.firstAt is reassigned to the IDENTICAL string it already holds — a self-assignment with no observable effect on any output. This differs from the lastAt line (kept strict, not baselined), where a tie still updates `sample` as a real side effect, so that boundary IS observable and IS tested. No test can distinguish < from <= here because both produce the same result on every input; restructuring the comparison cannot remove the equivalence, only relocate it."
+  },
+  {
+    "mutation": "< → <=",
+    "snippet": "for (let t = 16; t < 64; t++) {",
+    "reason": "Genuinely equivalent: the mutated bound runs one extra schedule iteration writing w[64], out of bounds on the fixed Uint32Array(64) — typed-array OOB writes are discarded, the loop body has no other effect, and nothing reads past w[63]. Bit-identical output; FIPS SHA-256 vectors pass either way. (carried with receiptgate.mjs from sjgant80-hub/post-proof@4cfa12b, where this exemption was argued for the same line)"
+  },
+  {
+    "mutation": "|| → &&",
+    "snippet": "if (!isObj(item) || !isStr(item.hash) || !isStr(item.prevHash) || !isObj(item.entry)) retu",
+    "reason": "Genuinely equivalent (the middle || variant): differs only when exactly ONE of item.hash / item.prevHash is a non-string, and both are shadowed by the strict recomputation below — a non-string hash cannot strictly equal the recomputed primitive-string hash, and a non-string prevHash cannot equal expectedPrev (GENESIS or a prior primitive-string hash). The killable outer clauses (an array item with an honest hash, a string entry with an honest hash) are killed by the suite. (carried with receiptgate.mjs from sjgant80-hub/post-proof@4cfa12b, where this exemption was argued for the same line)"
   }
 ]
