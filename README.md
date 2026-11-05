@@ -27,8 +27,18 @@ cd si-didy-loop && npm test
 
 Sealed in `CLAIMS-dream-week.md` before the measuring code (`dreamweek.mjs`, `scripts/dreamweek-cli.mjs`); result in
 `receipts/dream-week.json`: W1 (more dreams became code after the move to the 7B) HOLDS; W2 (the named repeat fell)
-FAILS and is kept. The fold now counts a title's whole family (version markers like `++`, Optimized, Redux) so the
-prompt names the real repeat.
+FAILS and is kept. The fold here now counts a title's whole family (version markers like `++`, Optimized, Redux) so
+the prompt names the real repeat. The resident's night (si-didy, on the laptop, not in git) carries its own
+byte-for-byte copy of `lessonsfold.mjs`; it folds by family once that copy is replaced with this one.
+
+## The rail
+
+`scripts/rail.mjs --post-next` posts only through `postScrubbedProven` (rail.mjs): the prose is scrubbed of model
+tells (`scrub.mjs`), every claim is checked against the build receipt the draft carries (`post.receipt`,
+`receiptgate.mjs`), then the score, spacing and daily cap. No receipt, no post. Until 2026-11-05 the runner called
+the bare `postable()` and a sibling fallscrub, so the receipt gate never ran on a real post;
+`scripts/rail-runner.test.mjs` now runs the real runner with the network stubbed and proves an unreceipted or
+overclaiming draft never reaches the wire.
 
 ## Vendored
 
@@ -38,9 +48,11 @@ prompt names the real repeat.
 
 ## Credits
 
-Powered by the Konomi architecture, created by Thomas Frumkin. The deepening loop's remember step was specified as
-"remember like Gary": Gary W. Floyd, Lumiea Systems Research Division — ThunderStruck Service, LLC. Supplied by
-[AI Native Solutions](https://www.ai-nativesolutions.com).
+Powered by the Konomi architecture, created by Thomas Frumkin. The night's dream-and-review shape (a dream is held
+apart and never written until a gate passes it) draws on Gary W. Floyd, Lumiea Systems Research Division —
+ThunderStruck Service, LLC — "Dream State Architecture: GEP-Guided Memory Consolidation and Entropy Regulation in
+Artificial Consciousness Systems," 2025; the deepening loop's remember step was specified as "remember like Gary".
+Supplied by [AI Native Solutions](https://www.ai-nativesolutions.com).
 
 ## License
 

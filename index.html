@@ -196,7 +196,7 @@ node /tmp/witness/witness.mjs mutate sharedoor.mjs --test node --test sharedoor.
   <p class="small mute">Read it like this: the model dreamed a title, wrote code and a test that ran, and the mutation gate showed the test missed a change to the code, so the code is not trusted. The resident noted the failure and tried to share it; the share door shut it because the reason named nothing a reader could go and check.</p>
 
   <h3>Around the night</h3>
-  <p>The same repo holds the parts of the loop that act during the day, each gated the same way: the <strong>operator</strong> runs operational work on its own but queues anything involving money, law, an irreversible step or the outside world until the key-holder signs it (Ed25519; the operator holds only the public key); the <strong>rail</strong> may post only on sanctioned platforms, only a post whose claims a build receipt backs (<code>receiptgate.mjs</code>), only after the model's fingerprints are scrubbed (<code>scrub.mjs</code>), and only inside its spacing and daily cap; and the <strong>morning brief</strong> folds the night's files into one page ending in one first action, and is never published.</p>
+  <p>The same repo holds the parts of the loop that act during the day, each gated the same way: the <strong>operator</strong> runs operational work on its own (building, gating, drafting) but queues a payment, a spend, a binding commitment, anything legal and any venture going live until the key-holder signs it (Ed25519; the operator holds only the key-holder's public key, so it can check a signature but never make one); the <strong>rail</strong> is the one outward action that runs without a signature, and its runner sends a post only through <code>postScrubbedProven</code>: the model's fingerprints scrubbed first (<code>scrub.mjs</code>), then every claim checked against the build receipt the draft carries (<code>receiptgate.mjs</code>: no receipt, no post), then its score, spacing and daily cap; and the <strong>morning brief</strong> folds the night's files into one page ending in one first action, and is never published.</p>
 
   <h2 id="week">The week check</h2>
   <p>On 2026-10-28 two things changed in the night: the dream prompt began naming the resident's own most-dreamed titles, and the model moved from the 14B (which did not fit this laptop and timed out) to the 7B. The build's memory set the check then: after a week, did more dreams become code, and did the named repeats fall? The claims, windows and definitions were sealed in <a href="CLAIMS-dream-week.md">CLAIMS-dream-week.md</a> and pushed before the code that measures them; both earlier rough looks at the ledger are declared there, so this is a recorded check, not a blind test. A failure stays on the record.</p>
@@ -207,7 +207,7 @@ node /tmp/witness/witness.mjs mutate sharedoor.mjs --test node --test sharedoor.
   <div class="bars" id="weekBars"></div>
   <p id="weekRead" class="mute"></p>
   <h3>What the fold fix changed in the prompt</h3>
-  <p>The week also showed why the reminder list was weak: the 7B re-dreams one thing under version markers (<code>++</code>, <code>+++</code>, <em>Optimized</em>, <em>Redux</em>…). The fold already ignored punctuation, but the words split the family and the prompt named the latest spelling. The fold now strips trailing version markers (<span id="markers" class="mute">…</span>, and V followed by digits) before counting. The prompt's list at the check date, as shipped and as fixed:</p>
+  <p>The week also showed why the reminder list was weak: the 7B re-dreams one thing under version markers (<code>++</code>, <code>+++</code>, <em>Optimized</em>, <em>Redux</em>…). The fold already ignored punctuation, but the words split the family and the prompt named the latest spelling. The fold in this repo now strips trailing version markers (<span id="markers" class="mute">…</span>, and V followed by digits) before counting, gated by its suite and witness. The resident's night carries its own byte-for-byte copy of this file on the laptop; until that copy is replaced with this one, the night still folds by exact spelling. The prompt's list at the check date, as shipped and as fixed:</p>
   <div class="tablewrap"><table aria-label="Prompt list before and after the fold fix">
     <thead><tr><th>as shipped (exact spelling)</th><th class="num">dreams</th><th>family-folded</th><th class="num">dreams</th></tr></thead>
     <tbody id="foldRows"><tr><td colspan="4" class="mute">loading…</td></tr></tbody>
@@ -251,17 +251,18 @@ NoiseReducerEnhanced</textarea>
     <thead><tr><th>kernel</th><th>what it does</th><th class="num">tests</th><th class="num">mutants caught</th><th>gate</th></tr></thead>
     <tbody id="bpRows"><tr><td colspan="5" class="mute">loading the gate receipt…</td></tr></tbody>
   </table></div>
-  <p class="small mute">The runners in <code>scripts/</code> (nightly study, operate, train, brief, rail, wisp-collapse, the week check and trace) do the file and network work and are not mutation-gated; they only wire files to the kernels above. The resident's own body (si-didy's sandbox runner, which vendors <code>lessonsfold.mjs</code> and <code>sharedoor.mjs</code>) lives on the laptop, outside this repo.</p>
+  <p class="small mute">The runners in <code>scripts/</code> (nightly study, operate, train, brief, rail, wisp-collapse, the week check and trace) do the file and network work and are not mutation-gated; they only wire files to the kernels above. The rail's runner, the one that can reach a platform, has its own behaviour suite (<a href="scripts/rail-runner.test.mjs"><code>scripts/rail-runner.test.mjs</code></a>): it runs the real runner on a copy with the network replaced by a stub, and proves an unreceipted or overclaiming draft never reaches the wire. The resident's own body (si-didy's sandbox runner, which vendors <code>lessonsfold.mjs</code> and <code>sharedoor.mjs</code>) lives on the laptop, outside this repo.</p>
 
   <h2 id="adoption">Adoption</h2>
-  <p><strong>What it does for a team:</strong> if you run any AI work unattended (an overnight agent, a batch that writes code or copy, a bot that posts), you wake up to output nobody watched being made. These kernels make that output checkable in the morning: every step is timed in a ledger you hold; code the model writes is run against its own test and mutation-checked before it is trusted; a note leaves only with a reason that names something checkable; a post claims only what a receipt backs; anything with money, legal, irreversible or external effect waits for a person's signature; and a weekly question is written down before it is measured, with failures kept.</p>
+  <p><strong>What it does for a team:</strong> if you run any AI work unattended (an overnight agent, a batch that writes code or copy, a bot that posts), you wake up to output nobody watched being made. These kernels make that output checkable in the morning: every step is timed in a ledger you hold; code the model writes is run against its own test and mutation-checked before it is trusted; a note leaves only with a reason that names something checkable; a post goes out only if a build receipt backs every claim in it; a payment, a spend, a binding commitment, anything legal or a launch waits for a person's signature; and a weekly question is written down before it is measured, with failures kept.</p>
+  <p><strong>What it needs:</strong> Node.js 20 or later and git; the kernels have no dependencies. For the night itself, a local model server (Ollama) with a model that fits the machine's memory: on this laptop the 14B did not fit and timed out, and the 7B does. The model and Ollama are separate software under their own licences.</p>
   <h3>How a team rolls it out</h3>
   <ol class="steps">
     <li><strong>Gate it on your own CI first.</strong> Fork, keep <code>.github/workflows/ci.yml</code>, and let your runner reproduce every verdict in <code>receipts/gates.json</code>. Nothing else is trusted until that is green.</li>
     <li><strong>Run the doors read-only over logs you already have.</strong> Feed last month's agent notes through <code>judgeShare</code> and last month's job titles through <code>foldDreams</code>. That is how the share door was proven before it went live: a backtest over the real shares log.</li>
     <li><strong>Wire the runner to your paths.</strong> The kernels never touch files; the runners in <code>scripts/</code> do, and they are written for one machine's paths. Point them at yours, and keep state in <code>safejson</code> files so a crash mid-write cannot kill the next night.</li>
     <li><strong>Make the key yours.</strong> Generate the operator's key pair on the key-holder's machine (<code>scripts/master-key.mjs --init</code>); the night only ever holds the public key, so it can prepare a threshold action but never execute one.</li>
-    <li><strong>Switch on outward actions last.</strong> The rail needs a platform token pasted by the key-holder into a local config file; it never rides through chat, a repo or a prompt, and the brief never prints it.</li>
+    <li><strong>Switch on outward actions last.</strong> The rail needs a platform token pasted by the key-holder into a local config file; it never rides through chat, a repo or a prompt, and the brief never prints it. Once the token is in, posts need no signature, so the draft writer must attach the build receipt each post's claims rest on: a draft without one is refused at the gate and stays in the outbox.</li>
     <li><strong>Seal a week check before you look.</strong> Write the claim, the windows and the definitions in a new file, commit it, then measure with a kernel, and keep the result whichever way it falls.</li>
   </ol>
 
@@ -284,7 +285,7 @@ NoiseReducerEnhanced</textarea>
     <div class="row"><button type="button" id="ccGo">Work it out</button><button type="button" class="ghost" id="ccReset">Back to the example inputs</button></div>
     <div class="out" id="ccOut" aria-live="polite"><span class="mute">loading the kernel and the basis…</span></div>
     <details><summary>Where every figure comes from</summary><ul class="small" id="ccSources"></ul>
-      <p class="small mute">How each route is costed: <strong>today</strong> is the staff time at the UK median wage (on-costs left out, so it is a floor); <strong>rented seats</strong> add assistant seats that help each person but take no work off; <strong>cloud API</strong> takes the same share of the work off as owning it and adds a frontier model's per-call bill on every case; <strong>own</strong> takes the same share off and adds the always-on extra electricity of a laptop already in use. Later years rise by CPI.</p></details>
+      <p class="small mute">How each route is costed: <strong>today</strong> is the staff time at the UK median wage (on-costs left out, so it is a floor); <strong>rented seats</strong> add assistant seats that help each person but take no work off; <strong>cloud API</strong> takes the same share of the work off as owning it and adds a frontier model's per-call bill on every case; <strong>own</strong> takes the same share off and adds the always-on extra electricity of a laptop already in use. Later years rise by CPI. Not in this case: the one-off time your team spends wiring the runners to your own paths (<a href="#adoption">Adoption</a>, step 3) and any support terms you agree with the supplier. Add your own figures for those; this page does not guess them.</p></details>
   </div>
 
   <h3>Against what you pay now</h3>
@@ -294,10 +295,10 @@ NoiseReducerEnhanced</textarea>
   <ul>
     <li><strong>Your data stays on your machine.</strong> The ledger, the notes, the knowledge graph and the morning brief are local files; the graph and the brief are kept out of the repo by design because they carry private names.</li>
     <li><strong>The kernels cannot leak.</strong> They make no network call and read no file; data goes in as an argument and a verdict comes back.</li>
-    <li><strong>Only three places are ever reached, and you choose them.</strong> The local model at <code>localhost:11434</code> (Ollama, on the same machine), and, only if the key-holder configures a token, the sanctioned posting APIs at <code>graph.facebook.com</code> and <code>api.linkedin.com</code>.</li>
-    <li><strong>Nothing irreversible runs unsigned.</strong> Money, legal, irreversible and external actions are classified by a frozen table the system cannot change; an action the table does not know is treated as a threshold action.</li>
+    <li><strong>This repo's code reaches two places, and you choose both.</strong> The wisp's runner talks to the local model at <code>localhost:11434</code> (Ollama, on the same machine) and refuses any other address; the rail's runner talks to <code>graph.facebook.com</code>, only once the key-holder configures a token, and refuses any other origin at the wire (the rail kernel can also shape a LinkedIn request; the runner does not send one). The nightly runner also starts scripts kept in other folders on the machine (the soul's session digest and the estate ladder's evidence scan); those are separate code with their own reach.</li>
+    <li><strong>Nothing with money or legal weight runs unsigned.</strong> Payments, spends, binding commitments, legal acts and launches are classified by a frozen table the system cannot change; an action the table does not know is treated as one of them. The only outward action that runs on its own is a post on the sanctioned rail, and only through the receipt gate.</li>
     <li><strong>Secrets never enter a prompt.</strong> The posting token is pasted by hand into a local config; the brief's suite asserts no printable brief contains it.</li>
-    <li><strong>Every gate is reproducible.</strong> Anyone can re-run the mutation gate at the pinned witness version and get the same verdicts the receipt shows.</li>
+    <li><strong>Every gate is reproducible.</strong> Anyone can re-run the mutation gate at the pinned witness version and get the same verdicts the receipt shows. The pin is the tag v0.6, and CI fails if that tag ever stops naming commit <code>f04fe30</code>, so nobody can move the gate under the receipt.</li>
   </ul>
 
   <h3>Roll-out</h3>
@@ -306,6 +307,7 @@ NoiseReducerEnhanced</textarea>
   <h3>Ownership, support and exit</h3>
   <ul>
     <li><strong>You own it.</strong> MIT licence: your copy is yours to change, run and keep.</li>
+    <li><strong>What is inside.</strong> Everything in the repo is MIT: the kernels written here and the ones vendored from the estate's post-proof, fallscrub and liveware (each MIT, copied byte for byte from its source). No runtime dependencies. The mutation gate (witness, MIT) runs only in CI.</li>
     <li><strong>It runs without us.</strong> No account, no licence server, no call home. If the supplier disappeared tomorrow, every kernel, test and gate keeps working.</li>
     <li><strong>Supplier and support.</strong> Supplied by AI Native Solutions; contact through <a href="https://www.ai-nativesolutions.com">ai-nativesolutions.com</a>. Support, service levels, warranty and liability are agreed per deployment.</li>
     <li><strong>Exit.</strong> It is files in your repository. Stop using it at any time; there is nothing to cancel and nothing held elsewhere.</li>
@@ -318,6 +320,7 @@ NoiseReducerEnhanced</textarea>
     <li><strong>Small local models write weak code.</strong> In the measured week <span data-k="week.passedB">…</span> dreams produced code that passed its own gate. The gate is what stops the rest being trusted; it does not make the model better.</li>
     <li><strong>One of the two week predictions failed.</strong> Naming the repeats did not make them fall (W2). The model changed the same day, so the two effects cannot be separated from this week alone. Both are kept on the record.</li>
     <li><strong>Posting depends on the platform.</strong> If a platform refuses the token's permissions, the rail refuses to post and the morning brief says so; it never works around the platform.</li>
+    <li><strong>A draft with no receipt never goes.</strong> The receipt gate is strict by design: a post that cites a link, a score, "live" or "CI green" needs a build receipt that backs each one. A team whose drafts carry no receipts will see the rail refuse every one, loudly, until they do.</li>
   </ul>
 
   <h3>The case for the board</h3>
@@ -326,12 +329,12 @@ NoiseReducerEnhanced</textarea>
   <h2 id="paper">White paper: keeping an unattended AI honest</h2>
   <p><strong>The problem.</strong> A model that works while nobody watches produces output that looks like progress. In this estate's own night, looking closely found five kinds of theatre: nightly "ideas" that were one fill-in template over three names; a memory probe that scored zero by construction because the model was never shown the memory it was asked about; a share rule ("an explicit reason, logged and justified") that had quietly narrowed to "three real words", so platitudes went out; a reminder list folded from a log that had stopped moving, so it named the same dead lessons every night; and a model too big for the laptop, whose timeouts the resident then wrote up as lessons.</p>
   <p><strong>The method.</strong> Each fix is a small pure kernel with its own tests, mutation-gated on a neutral runner, and wired by a separate runner script. Words come from evidence only (<code>plainsay</code> says a route from the edges it walked, or says that a reason was not kept). Doors are floors with written refusals (<code>sharedoor</code>, <code>operator</code>, <code>receiptgate</code>). State survives crashes (<code>safejson</code>). Runner faults are named as runner faults. And a change to the night is judged by a claim sealed before the measuring code exists.</p>
-  <p><strong>The result so far.</strong> Moving the night to a model that fits raised the share of dreams that became code (W1 holds). Naming the resident's repeats did not reduce them in that week (W2 fails); the fold that names them now counts a title's whole family, so the next measurement is about the real repeat rather than its latest spelling. Only a small share of the code passes its own gate, which is the gate doing its job.</p>
+  <p><strong>The result so far.</strong> Moving the night to a model that fits raised the share of dreams that became code (W1 holds). Naming the resident's repeats did not reduce them in that week (W2 fails); the fold that names them now counts a title's whole family, so once the resident carries it the next measurement is about the real repeat rather than its latest spelling. Only a small share of the code passes its own gate, which is the gate doing its job.</p>
   <p><strong>The limits.</strong> One laptop, one resident, one week, two changes on the same day. The check is recorded, not blind. The doors are floors, not judges of quality. None of this makes the model wiser; it makes what the model did checkable.</p>
 
   <h2 id="credits">Credits</h2>
   <p>Built by the estate (sjgant80-hub). Powered by the Konomi architecture, created by Thomas Frumkin.</p>
-  <p>The deepening loop's remember step was specified as "remember like Gary": Gary W. Floyd, Lumiea Systems Research Division — ThunderStruck Service, LLC.</p>
+  <p>The night's dream-and-review shape (the deepening loop's dream holds what it finds apart and never writes the graph; a dreamed kernel is trusted only once its gate passes) draws on Gary W. Floyd, Lumiea Systems Research Division — ThunderStruck Service, LLC — "Dream State Architecture: GEP-Guided Memory Consolidation and Entropy Regulation in Artificial Consciousness Systems," 2025. The deepening loop's remember step was specified as "remember like Gary".</p>
   <p>The receipt gate is post-proof's kernel and the scrub is fallscrub's, both from this estate and vendored with their own suites; the cost case is liveware's kernel over the estate's sourced basis. Mutation gate: <a href="https://github.com/sjgant80-hub/witness">witness</a> v0.6.</p>
 
   <footer>
@@ -346,6 +349,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 const setK = (k, v) => document.querySelectorAll('[data-k="' + k + '"]').forEach((n) => { n.textContent = v; });
 const setSvg = (k, v) => document.querySelectorAll('[data-svg="' + k + '"]').forEach((n) => { n.textContent = v; });
 const pct = (x) => (x === null || x === undefined ? 'none' : (Math.round(x * 1000) / 10) + '%');
+const of = (n, d) => n + ' of ' + d + '<br>' + (d > 0 ? (Math.round((n / d) * 1000) / 10) + '%' : 'none');   // from the counts, not a rounded rate
 const gbp = (x) => '£' + Number(x).toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 // theme: the reader's choice, kept in this browser only
@@ -426,9 +430,9 @@ json('receipts/dream-week.json').then((w) => {
   setK('week.verdicts', (w.verdict.W1 === 'HOLDS' ? 'holds' : 'fails') + ' · ' + (w.verdict.W2 === 'HOLDS' ? 'holds' : 'fails'));
   setK('week.passedB', B.passedGate + ' of ' + B.dreams);
   $('weekRows').innerHTML =
-    '<tr><td>W1 · more dreams became code</td><td class="num">' + A.becameCode + ' of ' + A.dreams + '<br>' + pct(A.renderRate) + '</td><td class="num">' + B.becameCode + ' of ' + B.dreams + '<br>' + pct(B.renderRate) + '</td><td>' + v(w.verdict.W1) + '</td></tr>'
-    + '<tr><td>W2 · the named repeat (PathFinder) fell</td><td class="num">' + A.pathFinderFamily + ' of ' + A.dreams + '<br>' + pct(A.pathFinderShare) + '</td><td class="num">' + B.pathFinderFamily + ' of ' + B.dreams + '<br>' + pct(B.pathFinderShare) + '</td><td>' + v(w.verdict.W2) + '</td></tr>'
-    + '<tr><td>W3 · code passed its own gate (no bar)</td><td class="num">' + A.passedGate + ' of ' + A.dreams + '<br>' + pct(A.passedRate) + '</td><td class="num">' + B.passedGate + ' of ' + B.dreams + '<br>' + pct(B.passedRate) + '</td><td><span class="pill warn">reported</span></td></tr>';
+    '<tr><td>W1 · more dreams became code</td><td class="num">' + of(A.becameCode, A.dreams) + '</td><td class="num">' + of(B.becameCode, B.dreams) + '</td><td>' + v(w.verdict.W1) + '</td></tr>'
+    + '<tr><td>W2 · the named repeat (PathFinder) fell</td><td class="num">' + of(A.pathFinderFamily, A.dreams) + '</td><td class="num">' + of(B.pathFinderFamily, B.dreams) + '</td><td>' + v(w.verdict.W2) + '</td></tr>'
+    + '<tr><td>W3 · code passed its own gate (no bar)</td><td class="num">' + of(A.passedGate, A.dreams) + '</td><td class="num">' + of(B.passedGate, B.dreams) + '</td><td><span class="pill warn">reported</span></td></tr>';
   const bar = (label, x, cls) => '<div class="bar"><span>' + esc(label) + '</span><span class="track"><span class="fill ' + cls + '" style="display:block;width:' + Math.round((x || 0) * 100) + '%"></span></span><span>' + pct(x) + '</span></div>';
   $('weekBars').innerHTML = '<p class="small mute">became code</p>' + bar('before (A)', A.renderRate, '') + bar('7B week (B)', B.renderRate, 'b')
     + '<p class="small mute">PathFinder family share</p>' + bar('before (A)', A.pathFinderShare, '') + bar('7B week (B)', B.pathFinderShare, 'b');
@@ -458,7 +462,7 @@ import('./sharedoor.mjs').then(({ judgeShare }) => {
     const r = judgeShare(share, { now: new Date().toISOString(), known });
     if (!r.ok) { $('sdOut').innerHTML = '<span class="bad">refused</span> — ' + esc(r.why); return; }
     const head = !r.open ? '<span class="pill bad">shut</span>' : r.repeat ? '<span class="pill warn">open, labelled a repeat</span>' : '<span class="pill ok">open</span>';
-    $('sdOut').innerHTML = head + ' ' + esc(r.why) + (r.named.length ? '<br><span class="small mute">names: ' + r.named.map(esc).join(', ') + ' · stamped ' + esc(r.at) + '</span>' : '<br><span class="small mute">stamped ' + esc(r.at) + '</span>');
+    $('sdOut').innerHTML = head + ' ' + esc(r.why.replace(/^open(, labelled a repeat)? — /, '')) + (r.named.length ? '<br><span class="small mute">names: ' + r.named.map(esc).join(', ') + ' · stamped ' + esc(r.at) + '</span>' : '<br><span class="small mute">stamped ' + esc(r.at) + '</span>');
   };
   $('sdGo').addEventListener('click', go);
   $('sdEx').addEventListener('click', () => { $('sdReason').value = 'The first render missed the edge case the witness gate caught (2/3 killed); new: the test now pins the empty-grid case in kernel.mjs.'; go(); });
