@@ -1,0 +1,9 @@
+{
+  "source": "https://github.com/sjgant80-hub/liveware at 48205c7 (main, 2026-11-05) — copied byte for byte, paths kept under vendor/liveware/ so the test runs unchanged",
+  "why": "the cost case on this page is liveware's gated kernel (src/mintcase.mjs) over the estate's sourced basis (basis.json, which liveware itself vendors from ai-first-company/sovereign-enterprise); nothing here is edited",
+  "files": {
+    "vendor/liveware/src/mintcase.mjs": "890be73fd6ece622ccb424e0c191c22738198a01bc177ebe5b362b9ddcb69eef",
+    "vendor/liveware/test/mintcase.test.mjs": "347b15b84f84f7870b34137b2f77cc292f70047e43f326995ccbbbe428f87c63",
+    "vendor/liveware/vendor/ai-first-company/vendor/sovereign-enterprise/data/basis.json": "83e9c2effa2f81596dcfa7110f030940032c1910cdf928d27d628ae59d73bb42"
+  }
+}

@@ -81,6 +81,11 @@ jobs:
       - name: witness — the scrub before the rail (must be CLEAN)
         run: |
           node /tmp/witness/witness.mjs mutate scrub.mjs             --timeout 60000 --cap 800 --baseline witness.baseline.json             --test node --test scrub.test.mjs > gate-out/scrub.json
+      # The cost case on the page is liveware's gated kernel, vendored byte for byte (vendor/liveware/PINS.json);
+      # it is gated here too, with liveware's own suite and liveware's own bound, so the copy this page runs is proven.
+      - name: witness — the cost case (must be CLEAN)
+        run: |
+          node /tmp/witness/witness.mjs mutate vendor/liveware/src/mintcase.mjs             --timeout 180000 --cap 800             --test node --test vendor/liveware/test/mintcase.test.mjs > gate-out/mintcase.json
       # The page's gate table reads receipts/gates.json. This step re-derives every row from the verdicts the
       # runner just produced (and the test counts from a fresh run), and fails if one number differs — so the
       # page can only show what this runner measured.

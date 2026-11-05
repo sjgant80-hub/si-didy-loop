@@ -1,0 +1,2 @@
+# vendored files are pinned by SHA-256 (vendor.test.mjs): store and check them out byte for byte
+vendor/** -text
