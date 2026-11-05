@@ -1,0 +1,97 @@
+{
+  "kind": "si-didy-loop/dream-week",
+  "claims": "CLAIMS-dream-week.md",
+  "measuredAt": "2026-11-05T14:03:27.907Z",
+  "ledger": {
+    "entries": 3085,
+    "sha256": "59306bb40b60eb00c9c325c5fd795ff6e949550a96636b02fa668c21a1733e10",
+    "note": "the private sandbox ledger; only counts and titles leave it"
+  },
+  "windows": {
+    "A": {
+      "from": "2026-10-14T12:00:00Z",
+      "to": "2026-10-28T12:00:00Z",
+      "dreams": 87,
+      "becameCode": 15,
+      "renderRate": 0.1724,
+      "passedGate": 2,
+      "passedRate": 0.023,
+      "pathFinderFamily": 15,
+      "pathFinderShare": 0.1724
+    },
+    "B": {
+      "from": "2026-10-28T12:00:00Z",
+      "to": "2026-11-04T12:00:00Z",
+      "dreams": 44,
+      "becameCode": 32,
+      "renderRate": 0.7273,
+      "passedGate": 2,
+      "passedRate": 0.0455,
+      "pathFinderFamily": 17,
+      "pathFinderShare": 0.3864
+    },
+    "Bplus": {
+      "from": "2026-10-28T12:00:00Z",
+      "to": "2026-11-05T12:00:00Z",
+      "dreams": 48,
+      "becameCode": 36,
+      "renderRate": 0.75,
+      "passedGate": 2,
+      "passedRate": 0.0417,
+      "pathFinderFamily": 19,
+      "pathFinderShare": 0.3958
+    }
+  },
+  "verdict": {
+    "W1": "HOLDS",
+    "W2": "FAILS",
+    "W3": "reported, no bar"
+  },
+  "promptList": {
+    "at": "2026-11-05T12:00:00Z",
+    "asShipped": [
+      {
+        "title": "PathFinder+++",
+        "count": 22
+      },
+      {
+        "title": "ColorBlender+",
+        "count": 5
+      },
+      {
+        "title": "Color Harmonizer+",
+        "count": 4
+      },
+      {
+        "title": "ColorPaletteOptimizer",
+        "count": 2
+      },
+      {
+        "title": "NoiseReducer",
+        "count": 2
+      }
+    ],
+    "familyFolded": [
+      {
+        "title": "PathFinder",
+        "count": 28
+      },
+      {
+        "title": "ColorBlender",
+        "count": 6
+      },
+      {
+        "title": "Color Harmonizer",
+        "count": 5
+      },
+      {
+        "title": "NoiseReducer",
+        "count": 3
+      },
+      {
+        "title": "ColorPaletteOptimizer",
+        "count": 2
+      }
+    ]
+  }
+}
