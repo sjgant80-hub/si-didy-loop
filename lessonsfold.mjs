@@ -86,11 +86,32 @@ export function foldLessons(shares, opts = {}) {
 // Each returned lesson: { title, count, lastAt } — the title as most recently dreamed, how
 // many times it was dreamed in the window, and when last. A revision's "(revision n)" suffix
 // and spacing, case and punctuation do not make a title new. Sorted like foldLessons.
-const DAY_MS = 86400000;
-function dreamKey(title) {
+//
+// ⚑ 2026-11-05, the one-week check: the 7B re-dreams a thing under a version marker — the
+// real ledger's 14 nights to 2026-11-05 hold PathFinder++ 11x, PathFinder+++ 4x,
+// PathFinderOptimized 2x, PathFinder Redux, PathFinderEnhanced, Color Harmonizer Pro,
+// NoiseReducerEnhanced, and earlier PathFinderReduxV2 / PathFinderReduxLite. Punctuation-
+// insensitive folding caught the plus runs but not the words, so the list named the latest
+// spelling ("PathFinder+++") and split the family. dreamBase strips trailing version
+// markers — runs of '+', and the words below or V<digits>, CamelCase-joined (capitalised,
+// straight after a lower-case letter or digit) or set off by a space, '_' or '-' (any case)
+// — so a family counts once, under its plain name. A marker is never the whole title
+// ("Pro" stays "Pro"), and a thing is not a marker: PathOptimizer is not PathFinder.
+// The rule is the one sealed in CLAIMS-dream-week.md.
+export const VERSION_MARKERS = Object.freeze(['Redux', 'Optimized', 'Enhanced', 'Improved', 'Evolved', 'Refined', 'Revised', 'Advanced', 'Pro', 'Plus', 'Lite']);
+const anyCase = (w) => w.replace(/[A-Za-z]/g, (c) => '[' + c.toUpperCase() + c.toLowerCase() + ']');
+const VERSION_TAIL = new RegExp(String.raw`(?:[\s_+-]+`
+  + String.raw`|[\s_-]+(?:` + VERSION_MARKERS.map(anyCase).join('|') + String.raw`|[Vv]\d+)`
+  + String.raw`|(?<=[a-z0-9])(?:` + VERSION_MARKERS.join('|') + String.raw`|V\d+))+$`);
+export function dreamBase(title) {
   if (typeof title !== 'string') return '';
-  return title.replace(/\(revision \d+\)/gi, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return title.replace(/\(revision \d+\)/gi, '').trim().replace(VERSION_TAIL, '').trim();
 }
+// the family a title belongs to: its base, with spacing, case and punctuation dropped
+export function dreamFamily(title) {
+  return dreamBase(title).toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+const DAY_MS = 86400000;
 export function foldDreams(ledger, opts = {}) {
   if (!Array.isArray(ledger)) return { ok: false, why: 'ledger must be an array' };
   if (opts === null || typeof opts !== 'object') return { ok: false, why: 'opts must be an object' };
@@ -107,11 +128,11 @@ export function foldDreams(ledger, opts = {}) {
     if (!isPlainObject(e) || e.kind !== 'dream' || typeof e.ts !== 'string') continue;
     const t = Date.parse(e.ts);
     if (!(t > start && t <= end)) continue;
-    const key = dreamKey(e.title);
+    const key = dreamFamily(e.title);
     if (!key) continue;
     const entry = byKey.get(key) || { title: '', count: 0, lastAt: '' };
     entry.count += 1;
-    if (e.ts >= entry.lastAt) { entry.lastAt = e.ts; entry.title = e.title.replace(/\(revision \d+\)/gi, '').trim(); }
+    if (e.ts >= entry.lastAt) { entry.lastAt = e.ts; entry.title = dreamBase(e.title); }
     byKey.set(key, entry);
   }
   const lessons = [];

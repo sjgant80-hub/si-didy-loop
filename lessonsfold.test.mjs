@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { foldLessons, foldDreams } from './lessonsfold.mjs';
+import { foldLessons, foldDreams, dreamBase, dreamFamily, VERSION_MARKERS } from './lessonsfold.mjs';
 
 // --- validation ---
 test('rejects non-array shares', () => {
@@ -223,4 +223,60 @@ test('foldDreams: most dreamed first, then by title; a tie in time keeps the lat
   assert.equal(foldDreams(same, { now: NOW }).lessons[0].title, 'First Spelling');
   const earlierLast = [dream('Zed', 1), dream('zed', 9)];
   assert.deepEqual(foldDreams(earlierLast, { now: NOW }).lessons[0], { title: 'Zed', count: 2, lastAt: at(1) });
+});
+
+// ── 2026-11-05: a version marker does not make a dream new (the one-week check's finding) ──
+test('dreamBase: the real ledger\'s re-dream spellings all fold to their plain name', () => {
+  const real = ['PathFinder++', 'PathFinder+++', 'PathFinderOptimized', 'PathFinder Redux', 'PathFinderReduxV2', 'PathFinderReduxLite', 'PathFinderEnhanced'];
+  for (const t of real) { assert.equal(dreamBase(t), 'PathFinder', t); assert.equal(dreamFamily(t), 'pathfinder', t); }
+  assert.equal(dreamBase('Color Harmonizer Pro'), 'Color Harmonizer');
+  assert.equal(dreamBase('Color Harmonizer+'), 'Color Harmonizer');
+  assert.equal(dreamBase('NoiseReducerEnhanced'), 'NoiseReducer');
+  assert.equal(dreamBase('EchoFrequencyAnalyzerRedux'), 'EchoFrequencyAnalyzer');
+  assert.equal(dreamBase('Path Finder (revision 2)'), 'Path Finder');
+  assert.equal(dreamBase('PathFinder Lite+ V3'), 'PathFinder');
+});
+
+test('dreamBase: every marker strips CamelCase-joined and separated in any case; V<digits> too', () => {
+  assert.equal(VERSION_MARKERS.length, 11);
+  assert.ok(Object.isFrozen(VERSION_MARKERS));
+  for (const m of VERSION_MARKERS) {
+    assert.equal(dreamBase('Shape' + m), 'Shape', 'camel ' + m);
+    assert.equal(dreamBase('Shape ' + m.toLowerCase()), 'Shape', 'spaced lower ' + m);
+    assert.equal(dreamBase('Shape_' + m.toUpperCase()), 'Shape', 'underscore upper ' + m);
+    assert.equal(dreamBase('Shape-' + m), 'Shape', 'hyphen ' + m);
+    assert.equal(dreamBase('shape9' + m), 'shape9', 'after a digit ' + m);
+  }
+  for (const v of ['ShapeV2', 'Shape v12', 'Shape_V3', 'Shape-v4']) assert.equal(dreamBase(v), 'Shape', v);
+  assert.equal(dreamBase('Shape++ Pro +'), 'Shape');
+});
+
+test('dreamBase: a marker is never the whole title, and a thing is not a marker', () => {
+  for (const t of ['Pro', 'V2', 'Redux', 'Lite']) assert.equal(dreamBase(t), t);
+  assert.equal(dreamBase('  Pro  '), 'Pro');
+  assert.equal(dreamBase('Pro++'), 'Pro');
+  for (const t of ['PathOptimizer', 'ColorPaletteOptimizer', 'Repro', 'Pathfinderpro', 'Process', 'Prolog', 'Path Pros', 'PathFinder Evolution', 'ShapeVx', 'ShapeV', 'untitled experiment 2891'])
+    assert.equal(dreamBase(t), t, t);
+  assert.equal(dreamBase('SHAPEPRO'), 'SHAPEPRO');                  // no lower-case letter before it: not CamelCase-joined
+  assert.equal(dreamBase('+++'), '');
+  assert.equal(dreamFamily('+++'), '');
+  for (const x of [null, undefined, 7, {}, []]) { assert.equal(dreamBase(x), ''); assert.equal(dreamFamily(x), ''); }
+});
+
+test('foldDreams: a family counts once, under the plain name of its latest spelling', () => {
+  const ledger = [dream('PathFinder', 90), dream('PathFinder++', 80), dream('PathFinderOptimized', 70), dream('PathFinder Redux', 60), dream('PathFinder+++', 10),
+    dream('PathOptimizer', 50), dream('PathOptimizer', 40), dream('Color Harmonizer+', 30), dream('Color Harmonizer Pro', 20), dream('+++', 5), dream('+++', 4)];
+  assert.deepEqual(foldDreams(ledger, { now: NOW }), { ok: true, lessons: [
+    { title: 'PathFinder', count: 5, lastAt: at(10) },
+    { title: 'Color Harmonizer', count: 2, lastAt: at(20) },
+    { title: 'PathOptimizer', count: 2, lastAt: at(40) },
+  ] });
+});
+
+test('foldDreams: folding into families never shrinks the top of the list (coarser partition, larger top counts)', () => {
+  const titles = ['PathFinder++', 'PathFinder+++', 'PathFinderOptimized', 'ColorBlender+', 'ColorBlenderEnhanced', 'NoiseReducer', 'NoiseReducerEnhanced', 'Lonely', 'Shape V2', 'Shape'];
+  const ledger = titles.map((t, i) => dream(t, i + 1));
+  const lessons = foldDreams(ledger, { now: NOW, minCount: 1 }).lessons;
+  assert.deepEqual(lessons.map((l) => [l.title, l.count]), [['PathFinder', 3], ['ColorBlender', 2], ['NoiseReducer', 2], ['Shape', 2], ['Lonely', 1]]);
+  assert.equal(lessons.reduce((n, l) => n + l.count, 0), titles.length);
 });

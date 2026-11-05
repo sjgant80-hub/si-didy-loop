@@ -35,6 +35,11 @@ jobs:
       - name: witness — the lessons fold (must be CLEAN)
         run: |
           node /tmp/witness/witness.mjs mutate lessonsfold.mjs             --timeout 60000 --cap 600 --baseline witness.baseline.json             --test node --test lessonsfold.test.mjs
+      # 2026-11-05, the dream fold's one-week check (CLAIMS-dream-week.md sealed first): the kernel that counts a
+      # window of nights — dreams, dreams that became code, code that passed its own gate, one title family.
+      - name: witness — the week of nights (must be CLEAN)
+        run: |
+          node /tmp/witness/witness.mjs mutate dreamweek.mjs             --timeout 60000 --cap 600             --test node --test dreamweek.test.mjs
       # 2026-10-25, Kar's choosing-session: the share door — stamp every share, shut reasons that name nothing
       - name: witness — the share door (must be CLEAN)
         run: |
