@@ -19,6 +19,8 @@ jobs:
       - name: witness — the seam law (must be CLEAN)
         run: |
           git clone --depth 1 --branch v0.6 https://github.com/sjgant80-hub/witness.git /tmp/witness
+          # a tag can be moved: hold it to the commit receipts/gates.json was measured on, or stop here
+          test "$(git -C /tmp/witness rev-parse HEAD)" = f04fe3047e3d49b98c67713befd5b77182afa0d4
           mkdir -p gate-out
           node /tmp/witness/witness.mjs mutate scripts/seam.mjs             --timeout 60000 --cap 600 --baseline scripts/seam.witness.baseline.json             --test node --test scripts/seam.test.mjs > gate-out/seam.json
       - name: witness — the twelve-powers law (must be CLEAN)
