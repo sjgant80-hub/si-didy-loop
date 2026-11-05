@@ -4,24 +4,27 @@
 //
 //   node scripts/rail.mjs --init        write the config template + print the one-time setup
 //   node scripts/rail.mjs --status      is the rail up — proves the connection with a real read
-//   node scripts/rail.mjs --post-next   post the oldest graded post the window allows
+//   node scripts/rail.mjs --post-next   post the oldest draft the PROVEN rail allows (below)
 //   node scripts/rail.mjs --measure     read real engagement back; print what converted
 //
 // The token lives ONLY in local-dna/rail-config.json (gitignored), pasted there by the
 // key-holder's own hand — the one-time setup is the human 10%. This runner never prints it:
 // everything printable goes through redact().
+//
+// --post-next goes through the PROVEN rail, rail.mjs postScrubbedProven, in the only honest order:
+// SCRUB the prose of model-tells (the vendored, gated scrub.mjs = fallscrub's kernel), run the
+// RECEIPT-GATE on the scrubbed text against the build-receipt the draft carries (post.receipt —
+// receiptgate.mjs = post-proof's kernel), then the rail's score / spacing / daily-cap window.
+// No receipt, no post. (2026-11-05: until today this runner called the bare postable() and a
+// sibling fallscrub, so the receipt-gate the kernel composes never ran on a real post.)
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { railReady, postable, buildPost, buildMetrics, redact, readMetrics, learn, KAPPA, GRAPH } from '../rail.mjs';
+import { fileURLToPath } from 'node:url';
+import { railReady, postScrubbedProven, buildPost, buildMetrics, redact, readMetrics, learn, KAPPA, GRAPH } from '../rail.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-// THE SOVEREIGNTY GATE before the rail: every post is scrubbed of model-tells (which local model
-// wrote it) by fallscrub, linked by observation from the sibling checkout. No scrubber, no post —
-// posting unscrubbed would leak the stack, which is the whole thing the rail exists to protect.
-const FALLSCRUB = join(here, '..', '..', 'fallscrub', 'scrub.mjs');
 const DNA = join(here, '..', 'local-dna');
 const CONFIG_F = join(DNA, 'rail-config.json');
 const OUTBOX_F = join(DNA, 'outbox.json');
@@ -85,24 +88,22 @@ if (args[0] === '--post-next') {
   const history = readJson(HISTORY_F, { kind: 'rail-history', sent: [] });
   const candidates = (outbox.posts || []).filter(p => p && !p.sentAtMs);
   if (!candidates.length) { console.log('the outbox is empty — nothing drafted to post.'); process.exit(0); }
-  const post = candidates[0];
-  const may = postable(post, config, history.sent, Date.now());
-  if (!may.ok) { console.log('not posting: ' + may.why); process.exit(0); }
-
-  // scrub the post of model-tells before it can go — no scrubber, no post
-  if (!existsSync(FALLSCRUB)) {
-    console.error('STOP: fallscrub is not checked out next door (' + FALLSCRUB + ').');
-    console.error('The rail will not post text it has not scrubbed of model-tells — clone fallscrub beside si-didy-loop first.');
-    process.exit(1);
+  // the oldest draft the proven rail lets through; a refused draft stays in the outbox, and the oldest
+  // refusal is said, so a draft with no receipt never silently blocks the ones behind it
+  const now = Date.now();
+  let post = null, d = null, first = null, refused = 0;
+  for (const p of candidates) {
+    const r = postScrubbedProven(p, p.receipt, config, history.sent, now);
+    if (r.ok) { post = p; d = r; break; }
+    refused += 1; if (!first) first = r;
   }
-  const { scrub } = await import(pathToFileURL(FALLSCRUB).href);
-  let scrubbed = 0;
-  for (const f of ['hook', 'reveal', 'cta']) {
-    if (typeof post[f] === 'string') { const r = scrub(post[f]); scrubbed += r.report.chatTokens + r.report.selfId + r.report.boilerplate + r.report.wordSwaps + r.report.unicode; post[f] = r.text; }
-  }
-  console.log(scrubbed ? `scrubbed ${scrubbed} model-tell(s) from the post before posting` : 'post carried no model-tells');
+  if (!d) { console.log(`not posting: ${refused} draft(s) waiting, none allowed — the oldest: ${first.why}`); process.exit(0); }
+  if (refused) console.log(`${refused} older draft(s) refused and kept in the outbox — the oldest: ${first.why}`);
+  const tells = Object.values(d.scrub).reduce((n, c) => n + c, 0);
+  console.log(tells ? `scrubbed ${tells} model-tell(s) from the post before the receipt-gate read it` : 'post carried no model-tells');
+  console.log('cleared the receipt-gate, then the rail: ' + d.why);
 
-  const req = buildPost(post, config);
+  const req = buildPost(d.post, config);   // exactly the bytes that were scrubbed AND claim-gated
   console.log('posting: ' + JSON.stringify(redact(req).body.message).slice(0, 120) + '…');
   const res = await graphFetch(req);
   if (res.status === 200 && res.body.id) {
