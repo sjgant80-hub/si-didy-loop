@@ -1,8 +1,513 @@
-<!doctype html><meta charset="utf-8"><title>si-didy-loop</title>
-<body style="margin:0;font:16px/1.6 ui-monospace,monospace;background:#0b0d12;color:#e8eaf0;padding:40px">
-<div style="max-width:640px;margin:auto">
-  <div style="letter-spacing:.2em;color:#8b93a7;font-size:12px">NICEASSOS-MESH</div>
-  <h1 style="font:400 34px Georgia,serif;color:#a78bfa;margin:8px 0">si-didy-loop</h1>
-  <p>The conductor — wires the five solids into a self-feeding loop (INIT to BUILD to VERIFY to REMEMBER to EXPLORE) that spirals instead of dead-orbiting, verified by the attractor liveness gate.</p>
-  <p style="color:#8b93a7">Deterministic · zero-dependency · konomified. <a style="color:#4ade80" href="https://github.com/sjgant80-hub/si-didy-loop">source</a></p>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>si-didy-loop</title>
+<meta name="description" content="The night shift of a local AI, kept honest: what the model is told before it dreams, which notes may leave, what it may post, which actions wait for a signature, and the one page a person reads in the morning. Every kernel mutation-gated on GitHub's runner.">
+<style>
+  :root {
+    --bg: #0b0d12; --panel: #11151e; --line: #232a3a; --ink: #e8eaf0; --mute: #8b93a7;
+    --violet: #a78bfa; --green: #4ade80; --red: #f87171; --amber: #fbbf24; --chip: #1a2030;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f6f6f9; --panel: #ffffff; --line: #d9dce6; --ink: #15171d; --mute: #565e72;
+      --violet: #5b3fd0; --green: #15803d; --red: #b91c1c; --amber: #92600a; --chip: #eef0f6;
+      color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f6f9; --panel: #ffffff; --line: #d9dce6; --ink: #15171d; --mute: #565e72;
+    --violet: #5b3fd0; --green: #15803d; --red: #b91c1c; --amber: #92600a; --chip: #eef0f6;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font: 15px/1.65 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--bg); color: var(--ink); }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 32px 16px 64px; }
+  .label { letter-spacing: .2em; color: var(--mute); font-size: 12px; text-transform: uppercase; }
+  h1 { font: 400 38px/1.15 Georgia, 'Times New Roman', serif; color: var(--violet); margin: 8px 0 12px; }
+  h2 { font: 400 27px/1.2 Georgia, 'Times New Roman', serif; color: var(--violet); margin: 56px 0 10px; scroll-margin-top: 16px; }
+  h3 { font: 400 19px/1.3 Georgia, 'Times New Roman', serif; color: var(--ink); margin: 26px 0 6px; }
+  p { margin: 10px 0; }
+  a { color: var(--green); }
+  a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+  .lede { font-size: 17px; }
+  .mute { color: var(--mute); }
+  .small { font-size: 13px; }
+  code, kbd { background: var(--chip); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; font-size: 13px; }
+  pre { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+  pre code { background: none; border: 0; padding: 0; }
+  nav.toc { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 20px 0 6px; }
+  nav.toc a { text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px; font-size: 13px; color: var(--ink); background: var(--panel); }
+  nav.toc a:hover { border-color: var(--violet); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 18px 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .card .n { font: 400 28px/1.1 Georgia, serif; color: var(--ink); }
+  .card .k { color: var(--mute); font-size: 12px; margin-top: 4px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 14px 0; }
+  ol.steps { padding-left: 22px; }
+  ol.steps li { margin: 8px 0; }
+  .ok { color: var(--green); } .bad { color: var(--red); } .warn { color: var(--amber); }
+  .pill { display: inline-block; border-radius: 999px; padding: 0 9px; font-size: 12px; border: 1px solid currentColor; }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin: 12px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--mute); font-weight: 400; background: var(--panel); position: sticky; top: 0; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  .grp td { background: var(--chip); color: var(--mute); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+  svg.dg { width: 100%; max-width: 520px; display: block; margin: 12px auto; height: auto; }
+  svg.dg .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.2; }
+  svg.dg .box.k { stroke: var(--violet); }
+  svg.dg .box.door { stroke: var(--green); }
+  svg.dg .box.priv { stroke: var(--amber); stroke-dasharray: 4 3; }
+  svg.dg text { fill: var(--ink); font: 12.5px ui-monospace, Menlo, Consolas, monospace; }
+  svg.dg text.h { font: 15px Georgia, serif; fill: var(--ink); }
+  svg.dg text.s { fill: var(--mute); font-size: 11px; }
+  svg.dg text.n { fill: var(--violet); font-size: 12px; }
+  svg.dg .ar { stroke: var(--mute); stroke-width: 1.4; fill: none; marker-end: url(#ah); }
+  svg.dg .ar.loop { stroke: var(--violet); stroke-dasharray: 5 4; }
+  svg.dg #ah path { fill: var(--mute); }
+  .bars { margin: 10px 0; }
+  .bar { display: grid; grid-template-columns: 130px 1fr 70px; gap: 8px; align-items: center; margin: 6px 0; font-size: 13px; }
+  .bar .track { background: var(--chip); border: 1px solid var(--line); border-radius: 6px; height: 14px; overflow: hidden; }
+  .bar .fill { height: 100%; background: var(--violet); }
+  .bar .fill.b { background: var(--green); }
+  textarea, input[type=text], input[type=number] { width: 100%; background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 14px; }
+  textarea { min-height: 96px; resize: vertical; }
+  button { font: inherit; font-size: 14px; background: var(--violet); color: #0b0d12; border: 0; border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+  button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+  .out { margin-top: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); min-height: 44px; font-size: 14px; }
+  .inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 14px; }
+  .inputs label { font-size: 13px; color: var(--mute); display: block; }
+  .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+  .roles .card h3 { margin-top: 0; }
+  details { border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; margin: 10px 0; background: var(--panel); }
+  summary { cursor: pointer; color: var(--ink); }
+  .trace { list-style: none; padding: 0; margin: 10px 0; border-left: 2px solid var(--violet); }
+  .trace li { padding: 4px 0 4px 14px; position: relative; }
+  .trace li::before { content: ''; position: absolute; left: -6px; top: 12px; width: 10px; height: 10px; border-radius: 50%; background: var(--bg); border: 2px solid var(--violet); }
+  .trace .kind { display: inline-block; min-width: 64px; color: var(--mute); }
+  footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--mute); font-size: 13px; }
+  .theme { position: absolute; top: 14px; right: 16px; }
+  @media (max-width: 560px) {
+    h1 { font-size: 31px; } h2 { font-size: 23px; }
+    .bar { grid-template-columns: 96px 1fr 58px; }
+  }
+</style>
+</head>
+<body>
+<button class="ghost theme small" id="theme" type="button" aria-label="Switch between light and dark">light / dark</button>
+<div class="wrap">
+  <div class="label">niceassos-mesh · the night shift</div>
+  <h1>si-didy-loop</h1>
+  <p class="lede">Every night a small AI model on one ordinary laptop dreams up a small piece of software, writes it, tests it and keeps notes on what it learned. <strong>si-didy-loop is the set of tested rules that keep that night honest</strong>: what the model is reminded of before it dreams, which of its notes may leave the machine, what it may post, which actions wait for a person's signature, and the single page that person reads in the morning.</p>
+  <p>Each rule is a small, pure piece of code (a <em>kernel</em>: no clock, no files, no network) with its own tests, and every kernel is mutation-tested on GitHub's runner on every push: the gate changes the code on purpose and the tests must notice. The numbers on this page are read from the repo's own receipts, which CI re-derives, so none of them is typed in.</p>
+
+  <div class="cards" aria-live="polite">
+    <div class="card"><div class="n" data-k="gates.count">…</div><div class="k">kernels mutation-gated on GitHub's runner</div></div>
+    <div class="card"><div class="n" data-k="gates.clean">…</div><div class="k">of them clean (no mutant survived)</div></div>
+    <div class="card"><div class="n" data-k="gates.tests">…</div><div class="k">tests in those suites and the state suite, each counted once</div></div>
+    <div class="card"><div class="n" data-k="week.verdicts">…</div><div class="k">the sealed week check (W1 · W2)</div></div>
+  </div>
+
+  <nav class="toc" aria-label="On this page">
+    <a href="#start">Start here</a><a href="#how">How it works</a><a href="#week">The week check</a><a href="#try">Try it</a>
+    <a href="#blueprint">Blueprint</a><a href="#adoption">Adoption</a><a href="#business">For business</a><a href="#paper">White paper</a><a href="#credits">Credits</a>
+  </nav>
+
+  <h2 id="start">Start here</h2>
+  <ol class="steps">
+    <li><strong>See one night.</strong> Read <a href="#how">How it works</a>: one dream traced from a real night, step by step, then what the whole week did.</li>
+    <li><strong>Try the two doors in this page.</strong> In <a href="#try">Try it</a>, type a share reason and see whether the share door lets it out, then paste some dream titles and see how the fold counts them. Both run the exact kernel files the CI gates, loaded straight from this repo.</li>
+    <li><strong>Run the tests yourself.</strong> Two sibling repos sit beside it (the conductor reads <code>missig</code>; the wisp's exams run on <code>generative-estate</code>'s field):
+<pre><code>git clone https://github.com/sjgant80-hub/si-didy-loop
+git clone --depth 1 https://github.com/sjgant80-hub/missig
+git clone --depth 1 https://github.com/sjgant80-hub/generative-estate
+cd si-didy-loop && npm test</code></pre></li>
+    <li><strong>Try to break one.</strong> Run the mutation gate (witness, pinned at v0.6) on any kernel, for example the share door:
+<pre><code>git clone --depth 1 --branch v0.6 https://github.com/sjgant80-hub/witness.git /tmp/witness
+node /tmp/witness/witness.mjs mutate sharedoor.mjs --test node --test sharedoor.test.mjs</code></pre></li>
+    <li><strong>Check the receipts.</strong> <a href="receipts/gates.json">receipts/gates.json</a> (every gate, re-derived by CI on every push), <a href="receipts/dream-week.json">receipts/dream-week.json</a> (the week check), <a href="receipts/night-trace.json">receipts/night-trace.json</a> (the traced night) and the sealed claims in <a href="CLAIMS-dream-week.md">CLAIMS-dream-week.md</a>.</li>
+    <li><strong>Wire your own night.</strong> The kernels take data in and hand verdicts back; the runners in <code>scripts/</code> do the file work. Read <a href="#adoption">Adoption</a> for the order to switch things on.</li>
+  </ol>
+
+  <h2 id="how">How it works</h2>
+  <p>The night is a loop. Before it dreams, the resident (the local model, Qwen 2.5 7B through Ollama on this laptop) is handed its own most-repeated dream titles from recent nights. It writes a title and an idea, then code and a test for it. The code is run against its own test and then mutation-tested; failing code gets revision rounds. The resident writes a note, and if it wants the note to leave the machine, the share door judges it. Every step is stamped into a private ledger on the machine, and the next night's reminder is folded from that ledger.</p>
+
+  <svg class="dg" viewBox="0 0 360 720" role="img" aria-labelledby="dgT dgD">
+    <title id="dgT">One night of the sandbox</title>
+    <desc id="dgD">A vertical flow. One: the prompt, folded by lessonsfold from the resident's own dream titles. Two: dream, a title and an idea from the local 7B model. Three: render, a kernel and its test; if the model returns nothing the runner records a no-render note. Four: gate, the code's own tests then witness, with revision rounds. Five: note, learned or failure noted, private. Six: the share door judges the note; open notes go to the shares log stamped with a time, shut notes stay in the private ledger with the reason. Seven: the private ledger records every step with a time; a dashed arrow returns to the prompt for the next night, and the week check reads the ledger.</desc>
+    <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+    <rect class="box k" x="20" y="10" width="320" height="64" rx="10"/>
+    <text class="h" x="36" y="34">1 · the prompt</text>
+    <text x="36" y="52">foldDreams: own titles, by family</text>
+    <text class="s" x="36" y="67">lessonsfold.mjs · "you have been here before"</text>
+    <path class="ar" d="M180 74 V 98"/>
+    <rect class="box" x="20" y="100" width="320" height="58" rx="10"/>
+    <text class="h" x="36" y="124">2 · dream</text>
+    <text x="36" y="143">the local 7B writes TITLE + IDEA</text>
+    <text class="n" x="328" y="124" text-anchor="end" data-svg="dreams">…</text>
+    <path class="ar" d="M180 158 V 182"/>
+    <rect class="box" x="20" y="184" width="320" height="64" rx="10"/>
+    <text class="h" x="36" y="208">3 · render</text>
+    <text x="36" y="226">===KERNEL=== + ===TEST===</text>
+    <text class="s" x="36" y="241">nothing back → "no render" (the runner's failure)</text>
+    <text class="n" x="328" y="208" text-anchor="end" data-svg="code">…</text>
+    <path class="ar" d="M180 248 V 272"/>
+    <rect class="box k" x="20" y="274" width="320" height="64" rx="10"/>
+    <text class="h" x="36" y="298">4 · gate</text>
+    <text x="36" y="316">its own tests, then witness</text>
+    <text class="s" x="36" y="331">fails → revision rounds</text>
+    <text class="n" x="328" y="298" text-anchor="end" data-svg="passed">…</text>
+    <path class="ar" d="M180 338 V 362"/>
+    <rect class="box priv" x="20" y="364" width="320" height="58" rx="10"/>
+    <text class="h" x="36" y="388">5 · note</text>
+    <text x="36" y="407">"learned:" / "failure noted:" — private</text>
+    <path class="ar" d="M180 422 V 446"/>
+    <rect class="box door" x="20" y="448" width="320" height="64" rx="10"/>
+    <text class="h" x="36" y="472">6 · the share door</text>
+    <text x="36" y="490">judgeShare: stamp · shut · label</text>
+    <text class="s" x="36" y="505">sharedoor.mjs</text>
+    <path class="ar" d="M100 512 V 546"/>
+    <path class="ar" d="M260 512 V 546"/>
+    <rect class="box door" x="20" y="548" width="150" height="56" rx="10"/>
+    <text x="34" y="570">open → shares</text>
+    <text class="n" x="34" y="590" data-svg="opened">…</text>
+    <rect class="box priv" x="190" y="548" width="150" height="56" rx="10"/>
+    <text x="204" y="570">shut → private</text>
+    <text class="n" x="204" y="590" data-svg="shut">…</text>
+    <path class="ar" d="M180 604 V 628"/>
+    <rect class="box priv" x="20" y="630" width="320" height="64" rx="10"/>
+    <text class="h" x="36" y="654">7 · the private ledger</text>
+    <text x="36" y="672">every step, timed, on the machine</text>
+    <text class="s" x="36" y="687">dreamweek.mjs reads it for the week check</text>
+    <path class="ar loop" d="M20 662 H 8 V 42 H 18"/>
+  </svg>
+  <p class="small mute" id="dgNote">Counts beside the boxes are the sealed week (window B) from <a href="receipts/dream-week.json">dream-week.json</a> and <a href="receipts/night-trace.json">night-trace.json</a>.</p>
+
+  <h3>One dream, traced from a real night</h3>
+  <p>This is the last dream of the sealed week that went all the way through, as the ledger recorded it (titles and the gate's verdict only; no text leaves the ledger). <span id="traceAt" class="mute"></span></p>
+  <ol class="trace" id="trace"><li class="mute">loading the trace…</li></ol>
+  <p class="small mute">Read it like this: the model dreamed a title, wrote code and a test that ran, and the mutation gate showed the test missed a change to the code, so the code is not trusted. The resident noted the failure and tried to share it; the share door shut it because the reason named nothing a reader could go and check.</p>
+
+  <h3>Around the night</h3>
+  <p>The same repo holds the parts of the loop that act during the day, each gated the same way: the <strong>operator</strong> runs operational work on its own but queues anything involving money, law, an irreversible step or the outside world until the key-holder signs it (Ed25519; the operator holds only the public key); the <strong>rail</strong> may post only on sanctioned platforms, only a post whose claims a build receipt backs (<code>receiptgate.mjs</code>), only after the model's fingerprints are scrubbed (<code>scrub.mjs</code>), and only inside its spacing and daily cap; and the <strong>morning brief</strong> folds the night's files into one page ending in one first action, and is never published.</p>
+
+  <h2 id="week">The week check</h2>
+  <p>On 2026-10-28 two things changed in the night: the dream prompt began naming the resident's own most-dreamed titles, and the model moved from the 14B (which did not fit this laptop and timed out) to the 7B. The build's memory set the check then: after a week, did more dreams become code, and did the named repeats fall? The claims, windows and definitions were sealed in <a href="CLAIMS-dream-week.md">CLAIMS-dream-week.md</a> and pushed before the code that measures them; both earlier rough looks at the ledger are declared there, so this is a recorded check, not a blind test. A failure stays on the record.</p>
+  <div class="tablewrap"><table aria-label="The week check">
+    <thead><tr><th>claim</th><th class="num">before (A)</th><th class="num">the 7B week (B)</th><th>verdict</th></tr></thead>
+    <tbody id="weekRows"><tr><td colspan="4" class="mute">loading the receipt…</td></tr></tbody>
+  </table></div>
+  <div class="bars" id="weekBars"></div>
+  <p id="weekRead" class="mute"></p>
+  <h3>What the fold fix changed in the prompt</h3>
+  <p>The week also showed why the reminder list was weak: the 7B re-dreams one thing under version markers (<code>++</code>, <code>+++</code>, <em>Optimized</em>, <em>Redux</em>…). The fold already ignored punctuation, but the words split the family and the prompt named the latest spelling. The fold now strips trailing version markers (<span id="markers" class="mute">…</span>, and V followed by digits) before counting. The prompt's list at the check date, as shipped and as fixed:</p>
+  <div class="tablewrap"><table aria-label="Prompt list before and after the fold fix">
+    <thead><tr><th>as shipped (exact spelling)</th><th class="num">dreams</th><th>family-folded</th><th class="num">dreams</th></tr></thead>
+    <tbody id="foldRows"><tr><td colspan="4" class="mute">loading…</td></tr></tbody>
+  </table></div>
+
+  <h2 id="try">Try it</h2>
+  <p>These two run in your browser on the real kernels, imported from <a href="sharedoor.mjs">sharedoor.mjs</a> and <a href="lessonsfold.mjs">lessonsfold.mjs</a>: the same files the CI gates. Nothing you type leaves this page.</p>
+  <div class="panel">
+    <h3 style="margin-top:4px">The share door</h3>
+    <p class="small mute">A share needs a reason that points at something a reader could check: an estate word (gate, kernel, witness, ledger…) or a code-shaped name such as <code>sharedoor.mjs</code>, <code>foldDreams</code> or <code>16/16</code>. Addressees and the share's own title do not count.</p>
+    <label class="small mute" for="sdTitle">title</label>
+    <input type="text" id="sdTitle" value="learned: ShapeMatcher">
+    <label class="small mute" for="sdReason" style="display:block;margin-top:8px">reason</label>
+    <textarea id="sdReason">This experiment highlighted the importance of clear communication and careful planning.</textarea>
+    <div class="row">
+      <button type="button" id="sdGo">Judge this share</button>
+      <button type="button" class="ghost" id="sdEx">Try a reason that names something</button>
+      <label class="small"><input type="checkbox" id="sdKnown"> the ledger already holds this lesson twice</label>
+    </div>
+    <div class="out" id="sdOut" aria-live="polite"><span class="mute">The verdict appears here.</span></div>
+  </div>
+  <div class="panel">
+    <h3 style="margin-top:4px">The dream fold</h3>
+    <p class="small mute">One dream title per line, newest last. The fold counts each family once, under the plain name of its latest spelling, and names those dreamed at least twice: the list the next night's prompt carries.</p>
+    <textarea id="dfIn">PathFinder
+ColorBlender+
+PathFinder++
+NoiseReducer
+PathFinderOptimized
+ColorBlenderEnhanced
+PathOptimizer
+PathFinder+++
+NoiseReducerEnhanced</textarea>
+    <div class="row"><button type="button" id="dfGo">Fold these titles</button></div>
+    <div class="out" id="dfOut" aria-live="polite"><span class="mute">The list appears here.</span></div>
+  </div>
+
+  <h2 id="blueprint">Blueprint</h2>
+  <p>Organ by organ. Each row is one kernel with its suite; the test counts and mutation verdicts are read from <a href="receipts/gates.json">receipts/gates.json</a>, which <code>scripts/gates-check.mjs</code> re-derives from the runner's own witness output on every push (CI turns red if a single number differs). An <em>argued exemption</em> is a mutant that cannot change behaviour, written down with its reason in <a href="witness.baseline.json">witness.baseline.json</a>.</p>
+  <div class="tablewrap"><table aria-label="Every kernel and its gate">
+    <thead><tr><th>kernel</th><th>what it does</th><th class="num">tests</th><th class="num">mutants caught</th><th>gate</th></tr></thead>
+    <tbody id="bpRows"><tr><td colspan="5" class="mute">loading the gate receipt…</td></tr></tbody>
+  </table></div>
+  <p class="small mute">The runners in <code>scripts/</code> (nightly study, operate, train, brief, rail, wisp-collapse, the week check and trace) do the file and network work and are not mutation-gated; they only wire files to the kernels above. The resident's own body (si-didy's sandbox runner, which vendors <code>lessonsfold.mjs</code> and <code>sharedoor.mjs</code>) lives on the laptop, outside this repo.</p>
+
+  <h2 id="adoption">Adoption</h2>
+  <p><strong>What it does for a team:</strong> if you run any AI work unattended (an overnight agent, a batch that writes code or copy, a bot that posts), you wake up to output nobody watched being made. These kernels make that output checkable in the morning: every step is timed in a ledger you hold; code the model writes is run against its own test and mutation-checked before it is trusted; a note leaves only with a reason that names something checkable; a post claims only what a receipt backs; anything with money, legal, irreversible or external effect waits for a person's signature; and a weekly question is written down before it is measured, with failures kept.</p>
+  <h3>How a team rolls it out</h3>
+  <ol class="steps">
+    <li><strong>Gate it on your own CI first.</strong> Fork, keep <code>.github/workflows/ci.yml</code>, and let your runner reproduce every verdict in <code>receipts/gates.json</code>. Nothing else is trusted until that is green.</li>
+    <li><strong>Run the doors read-only over logs you already have.</strong> Feed last month's agent notes through <code>judgeShare</code> and last month's job titles through <code>foldDreams</code>. That is how the share door was proven before it went live: a backtest over the real shares log.</li>
+    <li><strong>Wire the runner to your paths.</strong> The kernels never touch files; the runners in <code>scripts/</code> do, and they are written for one machine's paths. Point them at yours, and keep state in <code>safejson</code> files so a crash mid-write cannot kill the next night.</li>
+    <li><strong>Make the key yours.</strong> Generate the operator's key pair on the key-holder's machine (<code>scripts/master-key.mjs --init</code>); the night only ever holds the public key, so it can prepare a threshold action but never execute one.</li>
+    <li><strong>Switch on outward actions last.</strong> The rail needs a platform token pasted by the key-holder into a local config file; it never rides through chat, a repo or a prompt, and the brief never prints it.</li>
+    <li><strong>Seal a week check before you look.</strong> Write the claim, the windows and the definitions in a new file, commit it, then measure with a kernel, and keep the result whichever way it falls.</li>
+  </ol>
+
+  <h2 id="business">For business</h2>
+  <p>For a company deciding whether to run unattended AI work this way. Supplied by <a href="https://www.ai-nativesolutions.com">AI Native Solutions</a>.</p>
+  <h3>Benefits by role</h3>
+  <div class="roles">
+    <div class="card"><h3>CEO</h3><p>One page each morning ending in one first action, instead of a heap of logs. Anything the system says in public is limited to what a build receipt backs, so an AI cannot overclaim in the company's name.</p></div>
+    <div class="card"><h3>CFO</h3><p>The work runs on a model on hardware you already own, so the running cost is electricity, worked out below from sourced figures. The code is MIT-licensed: no seat licence and no subscription for the kernels.</p></div>
+    <div class="card"><h3>COO</h3><p>The night runs end to end on its own and survives a crash mid-write. A runner fault is recorded as the runner's fault ("no render"), not learned by the model as a lesson, so the process does not quietly teach itself the wrong thing.</p></div>
+    <div class="card"><h3>CTO / CISO</h3><p>Pure kernels (no clock, no files, no network), mutation-gated on GitHub's runner. Threshold actions need an Ed25519 signature the system cannot make. The posting token lives only in a local file the brief is tested never to print. The ledger stays on the machine.</p></div>
+    <div class="card"><h3>Engineering</h3><p>Code the model writes arrives with its own test and a mutation verdict, so a reviewer starts from what was proven, not from a guess. The week check is a template for measuring an AI change honestly.</p></div>
+    <div class="card"><h3>Comms and operations</h3><p>No platitude leaves the machine: the share door shuts reasons that name nothing. Posts go out on the platform's own sanctioned rails, spaced and capped, scrubbed of model fingerprints, and only with claims a receipt backs.</p></div>
+  </div>
+
+  <h3>The cost case: your process, your numbers</h3>
+  <p>The case for one process: the hours your people spend each week on work an unattended AI could take a share of (for example checking and triaging overnight output), what renting AI adds, and what owning it costs to run. The hours, the share and the counts are yours; every other figure is read from a sourced basis (listed under the result). It is computed in your browser by liveware's gated cost-case kernel, vendored byte for byte and gated here too. No price of ours appears: these are your costs.</p>
+  <div class="panel">
+    <div class="inputs" id="ccInputs"></div>
+    <div class="row"><button type="button" id="ccGo">Work it out</button><button type="button" class="ghost" id="ccReset">Back to the example inputs</button></div>
+    <div class="out" id="ccOut" aria-live="polite"><span class="mute">loading the kernel and the basis…</span></div>
+    <details><summary>Where every figure comes from</summary><ul class="small" id="ccSources"></ul>
+      <p class="small mute">How each route is costed: <strong>today</strong> is the staff time at the UK median wage (on-costs left out, so it is a floor); <strong>rented seats</strong> add assistant seats that help each person but take no work off; <strong>cloud API</strong> takes the same share of the work off as owning it and adds a frontier model's per-call bill on every case; <strong>own</strong> takes the same share off and adds the always-on extra electricity of a laptop already in use. Later years rise by CPI.</p></details>
+  </div>
+
+  <h3>Against what you pay now</h3>
+  <p>The comparison uses only sourced prices: rented assistant seats at the Microsoft 365 Copilot enterprise list price, and a cloud model at the Claude Sonnet 5 API list rates, each from the basis above. The rows in the result are exactly that comparison for your inputs. Like for like, the cloud route and the owned route take the same share of work off; what separates them is the per-call bill and where your data goes.</p>
+
+  <h3>Security and data protection</h3>
+  <ul>
+    <li><strong>Your data stays on your machine.</strong> The ledger, the notes, the knowledge graph and the morning brief are local files; the graph and the brief are kept out of the repo by design because they carry private names.</li>
+    <li><strong>The kernels cannot leak.</strong> They make no network call and read no file; data goes in as an argument and a verdict comes back.</li>
+    <li><strong>Only three places are ever reached, and you choose them.</strong> The local model at <code>localhost:11434</code> (Ollama, on the same machine), and, only if the key-holder configures a token, the sanctioned posting APIs at <code>graph.facebook.com</code> and <code>api.linkedin.com</code>.</li>
+    <li><strong>Nothing irreversible runs unsigned.</strong> Money, legal, irreversible and external actions are classified by a frozen table the system cannot change; an action the table does not know is treated as a threshold action.</li>
+    <li><strong>Secrets never enter a prompt.</strong> The posting token is pasted by hand into a local config; the brief's suite asserts no printable brief contains it.</li>
+    <li><strong>Every gate is reproducible.</strong> Anyone can re-run the mutation gate at the pinned witness version and get the same verdicts the receipt shows.</li>
+  </ul>
+
+  <h3>Roll-out</h3>
+  <p>The six steps in <a href="#adoption">Adoption</a> are the roll-out: CI first, read-only over your own logs, wire the runner, make the key yours, outward actions last, then a sealed week check. A team can stop after any step and still keep what it has: each step is useful on its own.</p>
+
+  <h3>Ownership, support and exit</h3>
+  <ul>
+    <li><strong>You own it.</strong> MIT licence: your copy is yours to change, run and keep.</li>
+    <li><strong>It runs without us.</strong> No account, no licence server, no call home. If the supplier disappeared tomorrow, every kernel, test and gate keeps working.</li>
+    <li><strong>Supplier and support.</strong> Supplied by AI Native Solutions; contact through <a href="https://www.ai-nativesolutions.com">ai-nativesolutions.com</a>. Support, service levels, warranty and liability are agreed per deployment.</li>
+    <li><strong>Exit.</strong> It is files in your repository. Stop using it at any time; there is nothing to cancel and nothing held elsewhere.</li>
+  </ul>
+
+  <h3>Risks, answered straight</h3>
+  <ul>
+    <li><strong>It was built for one estate.</strong> The kernels are general; the runner scripts carry one machine's paths and need wiring to yours (step 3).</li>
+    <li><strong>The share door is a floor, not a grade.</strong> It stops reasons that point at nothing; a model can learn to name an estate word in a thin reason.</li>
+    <li><strong>Small local models write weak code.</strong> In the measured week <span data-k="week.passedB">…</span> dreams produced code that passed its own gate. The gate is what stops the rest being trusted; it does not make the model better.</li>
+    <li><strong>One of the two week predictions failed.</strong> Naming the repeats did not make them fall (W2). The model changed the same day, so the two effects cannot be separated from this week alone. Both are kept on the record.</li>
+    <li><strong>Posting depends on the platform.</strong> If a platform refuses the token's permissions, the rail refuses to post and the morning brief says so; it never works around the platform.</li>
+  </ul>
+
+  <h3>The case for the board</h3>
+  <p>Unattended AI is cheap to start and expensive to trust. This is a way to run it where the trust is earned in public: every rule is code with a test, every test is attacked by a mutation gate on a neutral runner, every claim the system makes outward is limited to what a receipt backs, nothing with money or legal weight moves without a person's signature, and the company measures its own AI changes by writing the prediction down first and keeping the failures. It runs on hardware the company owns, under a licence the company keeps.</p>
+
+  <h2 id="paper">White paper: keeping an unattended AI honest</h2>
+  <p><strong>The problem.</strong> A model that works while nobody watches produces output that looks like progress. In this estate's own night, looking closely found five kinds of theatre: nightly "ideas" that were one fill-in template over three names; a memory probe that scored zero by construction because the model was never shown the memory it was asked about; a share rule ("an explicit reason, logged and justified") that had quietly narrowed to "three real words", so platitudes went out; a reminder list folded from a log that had stopped moving, so it named the same dead lessons every night; and a model too big for the laptop, whose timeouts the resident then wrote up as lessons.</p>
+  <p><strong>The method.</strong> Each fix is a small pure kernel with its own tests, mutation-gated on a neutral runner, and wired by a separate runner script. Words come from evidence only (<code>plainsay</code> says a route from the edges it walked, or says that a reason was not kept). Doors are floors with written refusals (<code>sharedoor</code>, <code>operator</code>, <code>receiptgate</code>). State survives crashes (<code>safejson</code>). Runner faults are named as runner faults. And a change to the night is judged by a claim sealed before the measuring code exists.</p>
+  <p><strong>The result so far.</strong> Moving the night to a model that fits raised the share of dreams that became code (W1 holds). Naming the resident's repeats did not reduce them in that week (W2 fails); the fold that names them now counts a title's whole family, so the next measurement is about the real repeat rather than its latest spelling. Only a small share of the code passes its own gate, which is the gate doing its job.</p>
+  <p><strong>The limits.</strong> One laptop, one resident, one week, two changes on the same day. The check is recorded, not blind. The doors are floors, not judges of quality. None of this makes the model wiser; it makes what the model did checkable.</p>
+
+  <h2 id="credits">Credits</h2>
+  <p>Built by the estate (sjgant80-hub). Powered by the Konomi architecture, created by Thomas Frumkin.</p>
+  <p>The deepening loop's remember step was specified as "remember like Gary": Gary W. Floyd, Lumiea Systems Research Division — ThunderStruck Service, LLC.</p>
+  <p>The receipt gate is post-proof's kernel and the scrub is fallscrub's, both from this estate and vendored with their own suites; the cost case is liveware's kernel over the estate's sourced basis. Mutation gate: <a href="https://github.com/sjgant80-hub/witness">witness</a> v0.6.</p>
+
+  <footer>
+    <p>si-didy-loop · MIT · <a href="https://github.com/sjgant80-hub/si-didy-loop">source</a> · <a href="https://github.com/sjgant80-hub/si-didy-loop/actions">CI</a> · supplied by <a href="https://www.ai-nativesolutions.com">AI Native Solutions</a></p>
+    <p>Powered by the Konomi architecture, created by Thomas Frumkin.</p>
+  </footer>
 </div>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const setK = (k, v) => document.querySelectorAll('[data-k="' + k + '"]').forEach((n) => { n.textContent = v; });
+const setSvg = (k, v) => document.querySelectorAll('[data-svg="' + k + '"]').forEach((n) => { n.textContent = v; });
+const pct = (x) => (x === null || x === undefined ? 'none' : (Math.round(x * 1000) / 10) + '%');
+const gbp = (x) => '£' + Number(x).toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+// theme: the reader's choice, kept in this browser only
+(() => {
+  const root = document.documentElement;
+  try { const t = localStorage.getItem('sdl-theme'); if (t === 'light' || t === 'dark') root.dataset.theme = t; } catch {}
+  $('theme').addEventListener('click', () => {
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : !matchMedia('(prefers-color-scheme: light)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem('sdl-theme', root.dataset.theme); } catch {}
+  });
+})();
+
+async function json(path) {
+  const r = await fetch(path, { cache: 'no-cache' });
+  if (!r.ok) throw new Error(path + ' ' + r.status);
+  return r.json();
+}
+const failed = (where, e) => { where.innerHTML = '<tr><td colspan="9" class="bad">could not load (' + esc(e.message) + '). Open the live page at https://sjgant80-hub.github.io/si-didy-loop/</td></tr>'; };
+
+// ── the gate receipt → the blueprint and the headline cards ──
+const ORGANS = [
+  ['The night', [
+    ['lessonsfold', 'Folds what the resident has already done into the dream prompt\'s reminder: share titles (foldLessons) and its own recent dream titles, counted by family (foldDreams).'],
+    ['dreamweek', 'Counts a window of nights in ledger order (dreams, dreams that became code, code that passed its own gate, one title family) and reads the sealed week claims.'],
+    ['sharedoor', 'Judges every share before it leaves: stamps the time, shuts a reason that names nothing a reader could check, labels a repeat.'],
+    ['wispwire', 'Turns proposals into sealed specs; the local model writes code without seeing the exam; only code that passes the field\'s gate stands.'],
+  ]],
+  ['Saying what it means', [
+    ['deepen', 'The deepening loop over the knowledge graph: fan wide, gate to the grounded, remember kept routes as provenanced edges, dream on idle (held open, never written).'],
+    ['plainsay', 'Says a dreamed route as sentences built only from edge and node evidence; a step whose reason was not kept is said as exactly that.'],
+    ['brief', 'Folds the night\'s files into one morning page ending in one first action; never copies the posting token.'],
+  ]],
+  ['Acting and posting', [
+    ['operator', 'Classifies every action: operational work runs; money, legal, irreversible and external actions queue until the key-holder signs (Ed25519).'],
+    ['scope', 'The registry of every stream the operator runs, checked against the operator\'s own classification when it loads.'],
+    ['rail', 'The sanctioned posting rail: ready check, gate score, spacing and daily cap; composes the receipt gate and the scrub.'],
+    ['receiptgate', 'A post may claim only what a build receipt backs (live URL, CI, witness verdict, measured facts); every decision lands on a SHA-256 chain. From post-proof.'],
+    ['scrub', 'Removes the tells of which model wrote a text: template tokens, self-identification, boilerplate, hidden marks. From fallscrub.'],
+  ]],
+  ['Learning and measuring', [
+    ['course', 'A staged, mastery-gated course: a stage opens only when its own gate passes; an inflated pitch scores zero.'],
+    ['si-didy-loop', 'The conductor: init, build, verify, remember, explore, with a golden-angle advance and stall detection so the loop spirals instead of repeating; rejected builds become miss-signatures.'],
+    ['seam', 'Measures whether approved actions actually ship: decided = (approved + rejected) / prepared, risen = executed / approved.'],
+    ['twelve', 'A completeness linter: twelve powers marked strong, weak or missing; the missing ones become the roadmap.'],
+    ['twelve-crawl', 'The linter across the whole estate index: four powers measured from hard evidence, the other eight named unread.'],
+    ['mintcase', 'The cost case on this page: liveware\'s kernel, vendored byte for byte.'],
+  ]],
+];
+json('receipts/gates.json').then((g) => {
+  const by = new Map(g.kernels.map((k) => [k.name, k]));
+  const tests = Object.values(g.testFiles).reduce((n, c) => n + c, 0);   // each suite once
+  setK('gates.count', g.kernels.length);
+  setK('gates.clean', g.kernels.filter((k) => k.clean).length);
+  setK('gates.tests', tests);
+  let html = '';
+  const seen = new Set();
+  for (const [group, rows] of ORGANS) {
+    html += '<tr class="grp"><td colspan="5">' + esc(group) + '</td></tr>';
+    for (const [name, what] of rows) {
+      const k = by.get(name); if (!k) continue; seen.add(name);
+      html += '<tr><td><a href="' + esc(k.kernel) + '"><code>' + esc(k.kernel.split('/').pop()) + '</code></a></td><td>' + esc(what) + '</td><td class="num">' + k.testCount
+        + '</td><td class="num">' + k.killed + ' / ' + k.total + (k.ignored ? '<br><span class="small mute">' + k.ignored + ' argued exemption' + (k.ignored > 1 ? 's' : '') + '</span>' : '')
+        + '</td><td>' + (k.clean ? '<span class="pill ok">clean</span>' : '<span class="pill bad">not clean</span>') + '</td></tr>';
+    }
+  }
+  const rest = g.kernels.filter((k) => !seen.has(k.name));
+  for (const k of rest) html += '<tr><td><code>' + esc(k.kernel) + '</code></td><td></td><td class="num">' + k.testCount + '</td><td class="num">' + k.killed + ' / ' + k.total + '</td><td>' + (k.clean ? '<span class="pill ok">clean</span>' : '<span class="pill bad">not clean</span>') + '</td></tr>';
+  html += '<tr class="grp"><td colspan="5">State that survives a crash</td></tr>';
+  for (const b of g.behaviourOnly) html += '<tr><td><a href="' + esc(b.kernel) + '"><code>' + esc(b.kernel) + '</code></a></td><td>Reads state loudly and writes it atomically, keeping the last good copy; an unreadable file is moved aside, never deleted. ' + esc(b.why) + '.</td><td class="num">' + b.testCount + '</td><td class="num">none to flip</td><td><span class="pill warn">behaviour suite</span></td></tr>';
+  $('bpRows').innerHTML = html;
+}).catch((e) => { failed($('bpRows'), e); ['gates.count', 'gates.clean', 'gates.tests'].forEach((k) => setK(k, '?')); });
+
+// ── the week check ──
+json('receipts/dream-week.json').then((w) => {
+  const A = w.windows.A, B = w.windows.B;
+  const v = (x) => '<span class="pill ' + (x === 'HOLDS' ? 'ok' : x === 'FAILS' ? 'bad' : 'warn') + '">' + esc(x) + '</span>';
+  setK('week.verdicts', (w.verdict.W1 === 'HOLDS' ? 'holds' : 'fails') + ' · ' + (w.verdict.W2 === 'HOLDS' ? 'holds' : 'fails'));
+  setK('week.passedB', B.passedGate + ' of ' + B.dreams);
+  $('weekRows').innerHTML =
+    '<tr><td>W1 · more dreams became code</td><td class="num">' + A.becameCode + ' of ' + A.dreams + '<br>' + pct(A.renderRate) + '</td><td class="num">' + B.becameCode + ' of ' + B.dreams + '<br>' + pct(B.renderRate) + '</td><td>' + v(w.verdict.W1) + '</td></tr>'
+    + '<tr><td>W2 · the named repeat (PathFinder) fell</td><td class="num">' + A.pathFinderFamily + ' of ' + A.dreams + '<br>' + pct(A.pathFinderShare) + '</td><td class="num">' + B.pathFinderFamily + ' of ' + B.dreams + '<br>' + pct(B.pathFinderShare) + '</td><td>' + v(w.verdict.W2) + '</td></tr>'
+    + '<tr><td>W3 · code passed its own gate (no bar)</td><td class="num">' + A.passedGate + ' of ' + A.dreams + '<br>' + pct(A.passedRate) + '</td><td class="num">' + B.passedGate + ' of ' + B.dreams + '<br>' + pct(B.passedRate) + '</td><td><span class="pill warn">reported</span></td></tr>';
+  const bar = (label, x, cls) => '<div class="bar"><span>' + esc(label) + '</span><span class="track"><span class="fill ' + cls + '" style="display:block;width:' + Math.round((x || 0) * 100) + '%"></span></span><span>' + pct(x) + '</span></div>';
+  $('weekBars').innerHTML = '<p class="small mute">became code</p>' + bar('before (A)', A.renderRate, '') + bar('7B week (B)', B.renderRate, 'b')
+    + '<p class="small mute">PathFinder family share</p>' + bar('before (A)', A.pathFinderShare, '') + bar('7B week (B)', B.pathFinderShare, 'b');
+  $('weekRead').textContent = 'Window A: ' + A.from.slice(0, 10) + ' to ' + A.to.slice(0, 10) + '. Window B: ' + B.from.slice(0, 10) + ' to ' + B.to.slice(0, 10)
+    + '. Through the check date (B+): ' + w.windows.Bplus.becameCode + ' of ' + w.windows.Bplus.dreams + ' dreams became code. The ledger read had ' + w.ledger.entries + ' entries; its SHA-256 is in the receipt so anyone holding it can re-run the check.';
+  const a = w.promptList.asShipped, f = w.promptList.familyFolded, n = Math.max(a.length, f.length);
+  let rows = '';
+  for (let i = 0; i < n; i++) rows += '<tr><td>' + (a[i] ? esc(a[i].title) : '') + '</td><td class="num">' + (a[i] ? a[i].count : '') + '</td><td>' + (f[i] ? esc(f[i].title) : '') + '</td><td class="num">' + (f[i] ? f[i].count : '') + '</td></tr>';
+  $('foldRows').innerHTML = rows;
+  setSvg('dreams', B.dreams + ' dreams');
+  setSvg('code', B.becameCode + ' became code');
+  setSvg('passed', B.passedGate + ' passed');
+}).catch((e) => { failed($('weekRows'), e); failed($('foldRows'), e); setK('week.verdicts', '?'); });
+
+json('receipts/night-trace.json').then((t) => {
+  $('trace').innerHTML = t.traced.steps.map((s) => '<li><span class="kind">' + esc(s.kind) + '</span> ' + esc(s.title) + (s.verdict ? ' <span class="mute">— ' + esc(s.verdict) + '</span>' : '') + '</li>').join('');
+  $('traceAt').textContent = 'Dreamed at ' + t.traced.at.replace('T', ' ').slice(0, 16) + ' UTC.';
+  setSvg('opened', t.shareDoor.opened + ' that week');
+  setSvg('shut', t.shareDoor.shut + ' that week');
+}).catch((e) => { $('trace').innerHTML = '<li class="bad">could not load the trace (' + esc(e.message) + ')</li>'; });
+
+// ── try it: the real kernels ──
+import('./sharedoor.mjs').then(({ judgeShare }) => {
+  const go = () => {
+    const share = { kind: 'note', title: $('sdTitle').value, reason: $('sdReason').value };
+    const known = $('sdKnown').checked ? [{ title: $('sdTitle').value, count: 2 }] : [];
+    const r = judgeShare(share, { now: new Date().toISOString(), known });
+    if (!r.ok) { $('sdOut').innerHTML = '<span class="bad">refused</span> — ' + esc(r.why); return; }
+    const head = !r.open ? '<span class="pill bad">shut</span>' : r.repeat ? '<span class="pill warn">open, labelled a repeat</span>' : '<span class="pill ok">open</span>';
+    $('sdOut').innerHTML = head + ' ' + esc(r.why) + (r.named.length ? '<br><span class="small mute">names: ' + r.named.map(esc).join(', ') + ' · stamped ' + esc(r.at) + '</span>' : '<br><span class="small mute">stamped ' + esc(r.at) + '</span>');
+  };
+  $('sdGo').addEventListener('click', go);
+  $('sdEx').addEventListener('click', () => { $('sdReason').value = 'The first render missed the edge case the witness gate caught (2/3 killed); new: the test now pins the empty-grid case in kernel.mjs.'; go(); });
+}).catch((e) => { $('sdOut').innerHTML = '<span class="bad">could not load sharedoor.mjs (' + esc(e.message) + ')</span>'; });
+
+import('./lessonsfold.mjs').then(({ foldDreams, VERSION_MARKERS }) => {
+  $('markers').textContent = VERSION_MARKERS.join(', ');
+  $('dfGo').addEventListener('click', () => {
+    const titles = $('dfIn').value.split('\n').map((s) => s.trim()).filter(Boolean);
+    const now = Date.now();
+    const ledger = titles.map((title, i) => ({ kind: 'dream', title, ts: new Date(now - (titles.length - i) * 60000).toISOString() }));
+    const r = foldDreams(ledger, { now: new Date(now).toISOString(), days: 14, minCount: 2 });
+    if (!r.ok) { $('dfOut').innerHTML = '<span class="bad">refused</span> — ' + esc(r.why); return; }
+    $('dfOut').innerHTML = r.lessons.length
+      ? '<ol style="margin:0;padding-left:20px">' + r.lessons.map((l) => '<li>' + esc(l.title) + ' <span class="mute">— dreamed ' + l.count + ' times</span></li>').join('') + '</ol>'
+      : '<span class="mute">Nothing was dreamed twice: the prompt would carry no reminder.</span>';
+  });
+}).catch((e) => { $('dfOut').innerHTML = '<span class="bad">could not load lessonsfold.mjs (' + esc(e.message) + ')</span>'; });
+
+// ── the cost case: liveware's gated kernel over the sourced basis ──
+const FIELDS = [
+  ['hoursPerWeek', 'hours a week your people spend on the process', 'number', 0.5],
+  ['share', 'share of that work the system takes off (0 to 1)', 'number', 0.05],
+  ['seats', 'rented assistant seats you would buy instead', 'number', 1],
+  ['casesPerWeek', 'model calls a week (cases)', 'number', 1],
+  ['tokensIn', 'tokens sent per call', 'number', 1],
+  ['tokensOut', 'tokens back per call', 'number', 1],
+  ['years', 'years to compare (1 to 10)', 'number', 1],
+];
+Promise.all([import('./vendor/liveware/src/mintcase.mjs'), json('vendor/liveware/vendor/ai-first-company/vendor/sovereign-enterprise/data/basis.json')]).then(([{ mintCase, DEFAULTS, sourcesOf }, basis]) => {
+  const fill = () => { $('ccInputs').innerHTML = FIELDS.map(([k, label, type, step]) => '<div><label for="cc_' + k + '">' + esc(label) + '</label><input id="cc_' + k + '" type="' + type + '" step="' + step + '" min="0" value="' + DEFAULTS[k] + '"></div>').join(''); };
+  const run = () => {
+    const input = Object.fromEntries(FIELDS.map(([k]) => [k, Number($('cc_' + k).value)]));
+    const r = mintCase(basis, input);
+    if (!r.ok) { $('ccOut').innerHTML = '<span class="bad">' + esc(r.why) + '</span>'; return; }
+    const y = r.inputs.years;
+    $('ccOut').innerHTML = '<div class="tablewrap" style="margin:0"><table><thead><tr><th>route</th><th class="num">a year</th><th class="num">over ' + y + ' year' + (y > 1 ? 's' : '') + '</th></tr></thead><tbody>'
+      + '<tr><td>today: the staff time</td><td class="num">' + gbp(r.perYear.today) + '</td><td class="num">' + gbp(r.over.today) + '</td></tr>'
+      + '<tr><td>rent assistant seats (take nothing off)</td><td class="num">' + gbp(r.perYear.rentSeats) + '</td><td class="num">' + gbp(r.over.rentSeats) + '</td></tr>'
+      + '<tr><td>cloud model on every call</td><td class="num">' + gbp(r.perYear.cloudApi) + '</td><td class="num">' + gbp(r.over.cloudApi) + '</td></tr>'
+      + '<tr><td><strong>own it: a local model</strong></td><td class="num"><strong>' + gbp(r.perYear.own) + '</strong></td><td class="num"><strong>' + gbp(r.over.own) + '</strong></td></tr>'
+      + '</tbody></table></div><p class="small">Owning saves <strong>' + gbp(r.savingPerYear) + '</strong> a year against today, <strong>' + gbp(r.savingOver) + '</strong> over ' + y + ' year' + (y > 1 ? 's' : '') + ', and <strong>' + gbp(r.versusCloudOver) + '</strong> against the cloud route. Lines: staff ' + gbp(r.lines.staff) + ', taken off ' + gbp(r.lines.takenOff) + ', seats ' + gbp(r.lines.seats) + ', cloud calls ' + gbp(r.lines.api) + ', electricity ' + gbp(r.lines.power) + ' a year.</p>';
+  };
+  fill(); run();
+  $('ccGo').addEventListener('click', run);
+  $('ccReset').addEventListener('click', () => { fill(); run(); });
+  $('ccInputs').addEventListener('keydown', (e) => { if (e.key === 'Enter') run(); });
+  $('ccSources').innerHTML = sourcesOf(basis).map((s) => '<li>' + esc(s.what) + (s.source ? ' — <a href="' + esc(s.source) + '" rel="noopener">source</a>' : ' (a definition, not a sourced figure)') + '</li>').join('');
+}).catch((e) => { $('ccOut').innerHTML = '<span class="bad">could not load the cost case (' + esc(e.message) + ')</span>'; });
+</script>
+</body>
+</html>

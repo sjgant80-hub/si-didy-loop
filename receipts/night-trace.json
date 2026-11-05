@@ -1,0 +1,47 @@
+{
+  "kind": "si-didy-loop/night-trace",
+  "about": "a description of real nights (window B of CLAIMS-dream-week.md), not a measured claim; kinds, titles and gate verdict words only",
+  "tracedAt": "2026-11-05T14:39:52.572Z",
+  "window": {
+    "from": "2026-10-28T12:00:00Z",
+    "to": "2026-11-04T12:00:00Z"
+  },
+  "dreams": 44,
+  "traced": {
+    "at": "2026-11-04T05:57:36.529Z",
+    "steps": [
+      {
+        "kind": "dream",
+        "title": "Color Harmonizer Pro"
+      },
+      {
+        "kind": "render",
+        "title": "Color Harmonizer Pro"
+      },
+      {
+        "kind": "gate",
+        "title": "Color Harmonizer Pro gated",
+        "verdict": "not clean — 1 of 2 mutants caught (round 0)"
+      },
+      {
+        "kind": "note",
+        "title": "failure noted: Color Harmonizer Pro"
+      },
+      {
+        "kind": "note",
+        "title": "share shut at the door: failure noted: Color Harmonizer Pro"
+      }
+    ]
+  },
+  "notes": {
+    "no render": 11,
+    "failure noted": 29,
+    "share shut at the door": 21,
+    "learned": 2
+  },
+  "shareDoor": {
+    "shut": 21,
+    "opened": 4,
+    "openedStamped": 4
+  }
+}

@@ -55,6 +55,8 @@ const receiptOf = () => ({
   behaviourOnly: [{ kernel: 'safejson.mjs', tests: ['safejson.test.mjs'], testCount: testCount(['safejson.test.mjs']).tests,
     why: 'no comparison or logic operator for witness to flip, so witness refuses to call it a pass; its proof is the behaviour suite on real files' }],
   kernels: measured,
+  // each suite counted once (operator's gate also runs scope's suite), so a total over these is not double-counted
+  testFiles: Object.fromEntries([...new Set([...rows.flatMap((r) => r.tests), 'safejson.test.mjs'])].sort().map((f) => [f, testCount([f]).tests])),
 });
 
 if (WRITE) {
@@ -77,6 +79,7 @@ for (const r of want.kernels) {
 }
 for (const n of have.keys()) problems.push(n + ': in the receipt, not gated by this run');
 if (JSON.stringify(receipt.behaviourOnly) !== JSON.stringify(want.behaviourOnly)) problems.push('behaviourOnly: receipt differs from this run');
+if (JSON.stringify(receipt.testFiles) !== JSON.stringify(want.testFiles)) problems.push('testFiles: receipt ' + JSON.stringify(receipt.testFiles) + ' but this run ' + JSON.stringify(want.testFiles));
 for (const r of want.kernels) console.log((r.clean ? '✓ ' : '✗ ') + r.kernel.padEnd(26) + String(r.killed).padStart(4) + '/' + String(r.total).padEnd(4) + ' ignored ' + r.ignored + ' · ' + r.testCount + ' tests');
 if (want.kernels.some((r) => !r.clean)) problems.push('a gate is not clean');
 if (problems.length) { console.error('\n✗ the gate receipt does not match this run:\n  ' + problems.join('\n  ')); process.exit(1); }

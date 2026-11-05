@@ -1,0 +1,291 @@
+{
+  "kind": "si-didy-loop/gates",
+  "witness": "sjgant80-hub/witness v0.6 (pinned tag), run on the GitHub runner by .github/workflows/ci.yml",
+  "note": "every row is re-derived on every push by scripts/gates-check.mjs; a row that differs from the run turns CI red",
+  "behaviourOnly": [
+    {
+      "kernel": "safejson.mjs",
+      "tests": [
+        "safejson.test.mjs"
+      ],
+      "testCount": 7,
+      "why": "no comparison or logic operator for witness to flip, so witness refuses to call it a pass; its proof is the behaviour suite on real files"
+    }
+  ],
+  "kernels": [
+    {
+      "name": "seam",
+      "kernel": "scripts/seam.mjs",
+      "tests": [
+        "scripts/seam.test.mjs"
+      ],
+      "testCount": 5,
+      "baseline": "scripts/seam.witness.baseline.json",
+      "total": 12,
+      "killed": 11,
+      "ignored": 1,
+      "survived": 0,
+      "clean": true
+    },
+    {
+      "name": "twelve",
+      "kernel": "scripts/twelve.mjs",
+      "tests": [
+        "scripts/twelve.test.mjs"
+      ],
+      "testCount": 7,
+      "baseline": null,
+      "total": 17,
+      "killed": 17,
+      "ignored": 0,
+      "survived": 0,
+      "clean": true
+    },
+    {
+      "name": "twelve-crawl",
+      "kernel": "scripts/twelve-crawl.mjs",
+      "tests": [
+        "scripts/twelve-crawl.test.mjs"
+      ],
+      "testCount": 7,
+      "baseline": null,
+      "total": 39,
+      "killed": 39,
+      "ignored": 0,
+      "survived": 0,
+      "clean": true
+    },
+    {
+      "name": "rail",
+      "kernel": "rail.mjs",
+      "tests": [
+        "rail.test.mjs"
+      ],
+      "testCount": 32,
+      "baseline": "witness.baseline.json",
+      "total": 36,
+      "killed": 35,
+      "ignored": 1,
+      "survived": 0,
+      "clean": true
+    },
+    {
+      "name": "lessonsfold",
+      "kernel": "lessonsfold.mjs",
+      "tests": [
+        "lessonsfold.test.mjs"
+      ],
+      "testCount": 34,
+      "baseline": "witness.baseline.json",
+      "total": 57,
+      "killed": 56,
+      "ignored": 1,
+      "survived": 0,
+      "clean": true
+    },
+    {
+      "name": "dreamweek",
+      "kernel": "dreamweek.mjs",
+      "tests": [
+        "dreamweek.test.mjs"
+      ],
+      "testCount": 11,
+      "baseline": null,
+      "total": 34,
+      "killed": 34,
+      "ignored": 0,
+      "survived": 0,
+      "clean": true
+    },
+    {
+      "name": "sharedoor",
+      "kernel": "sharedoor.mjs",
+      "tests": [
+        "sharedoor.test.mjs"
+      ],
+      "testCount": 25,
+      "baseline": null,
+      "total": 35,
+      "killed": 35,
+      "ignored": 0,
+      "survived": 0,
+      "clean": true
+    },
+    {
+      "name": "deepen",
+      "kernel": "deepen.mjs",
+      "tests": [
+        "deepen.test.mjs"
+      ],
+      "testCount": 16,
+      "baseline": "witness.baseline.json",
+      "total": 49,
+      "killed": 48,
+      "ignored": 1,
+      "survived": 0,
+      "clean": true
+    },
+    {
+      "name": "plainsay",
+      "kernel": "plainsay.mjs",
+      "tests": [
+        "plainsay.test.mjs"
+      ],
+      "testCount": 8,
+      "baseline": "witness.baseline.json",
+      "total": 24,
+      "killed": 24,
+      "ignored": 0,
+      "survived": 0,
+      "clean": true
+    },
+    {
+      "name": "brief",
+      "kernel": "brief.mjs",
+      "tests": [
+        "brief.test.mjs"
+      ],
+      "testCount": 18,
+      "baseline": "witness.baseline.json",
+      "total": 46,
+      "killed": 46,
+      "ignored": 0,
+      "survived": 0,
+      "clean": true
+    },
+    {
+      "name": "wispwire",
+      "kernel": "wispwire.mjs",
+      "tests": [
+        "wispwire.test.mjs"
+      ],
+      "testCount": 24,
+      "baseline": "witness.baseline.json",
+      "total": 24,
+      "killed": 23,
+      "ignored": 1,
+      "survived": 0,
+      "clean": true
+    },
+    {
+      "name": "course",
+      "kernel": "course.mjs",
+      "tests": [
+        "course.test.mjs"
+      ],
+      "testCount": 25,
+      "baseline": "witness.baseline.json",
+      "total": 73,
+      "killed": 72,
+      "ignored": 1,
+      "survived": 0,
+      "clean": true
+    },
+    {
+      "name": "operator",
+      "kernel": "operator.mjs",
+      "tests": [
+        "operator.test.mjs",
+        "scope.test.mjs"
+      ],
+      "testCount": 23,
+      "baseline": "witness.baseline.json",
+      "total": 39,
+      "killed": 38,
+      "ignored": 1,
+      "survived": 0,
+      "clean": true
+    },
+    {
+      "name": "scope",
+      "kernel": "scope.mjs",
+      "tests": [
+        "scope.test.mjs"
+      ],
+      "testCount": 13,
+      "baseline": "witness.baseline.json",
+      "total": 22,
+      "killed": 22,
+      "ignored": 0,
+      "survived": 0,
+      "clean": true
+    },
+    {
+      "name": "si-didy-loop",
+      "kernel": "si-didy-loop.mjs",
+      "tests": [
+        "si-didy-loop.test.mjs"
+      ],
+      "testCount": 14,
+      "baseline": "witness.baseline.json",
+      "total": 27,
+      "killed": 23,
+      "ignored": 4,
+      "survived": 0,
+      "clean": true
+    },
+    {
+      "name": "receiptgate",
+      "kernel": "receiptgate.mjs",
+      "tests": [
+        "receiptgate.test.mjs"
+      ],
+      "testCount": 40,
+      "baseline": "witness.baseline.json",
+      "total": 93,
+      "killed": 91,
+      "ignored": 2,
+      "survived": 0,
+      "clean": true
+    },
+    {
+      "name": "scrub",
+      "kernel": "scrub.mjs",
+      "tests": [
+        "scrub.test.mjs"
+      ],
+      "testCount": 12,
+      "baseline": "witness.baseline.json",
+      "total": 6,
+      "killed": 6,
+      "ignored": 0,
+      "survived": 0,
+      "clean": true
+    },
+    {
+      "name": "mintcase",
+      "kernel": "vendor/liveware/src/mintcase.mjs",
+      "tests": [
+        "vendor/liveware/test/mintcase.test.mjs"
+      ],
+      "testCount": 9,
+      "baseline": null,
+      "total": 21,
+      "killed": 21,
+      "ignored": 0,
+      "survived": 0,
+      "clean": true
+    }
+  ],
+  "testFiles": {
+    "brief.test.mjs": 18,
+    "course.test.mjs": 25,
+    "deepen.test.mjs": 16,
+    "dreamweek.test.mjs": 11,
+    "lessonsfold.test.mjs": 34,
+    "operator.test.mjs": 10,
+    "plainsay.test.mjs": 8,
+    "rail.test.mjs": 32,
+    "receiptgate.test.mjs": 40,
+    "safejson.test.mjs": 7,
+    "scope.test.mjs": 13,
+    "scripts/seam.test.mjs": 5,
+    "scripts/twelve-crawl.test.mjs": 7,
+    "scripts/twelve.test.mjs": 7,
+    "scrub.test.mjs": 12,
+    "sharedoor.test.mjs": 25,
+    "si-didy-loop.test.mjs": 14,
+    "vendor/liveware/test/mintcase.test.mjs": 9,
+    "wispwire.test.mjs": 24
+  }
+}
