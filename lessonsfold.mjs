@@ -99,13 +99,47 @@ export function foldLessons(shares, opts = {}) {
 // ("Pro" stays "Pro"), and a thing is not a marker: PathOptimizer is not PathFinder.
 // The rule is the one sealed in CLAIMS-dream-week.md.
 export const VERSION_MARKERS = Object.freeze(['Redux', 'Optimized', 'Enhanced', 'Improved', 'Evolved', 'Refined', 'Revised', 'Advanced', 'Pro', 'Plus', 'Lite']);
+//
+// ⚑ 2026-11-06, the strict re-check: the rule shipped as ONE regex, (separators | marker)+$, whose
+// nested repeats can split a run of separators in exponentially many ways before it fails. A title
+// of 'PathFinder', 26 spaces and an 'x' took 2.1 s, and every two more spaces tripled it, so a model
+// title with a long gap in it would hang the night's fold. The same rule is now read right to left, one marker at
+// a time, in time linear in the title; the suite holds it to the old regex on 20,000 generated titles
+// and every spelling above, and times a 100,000-character gap.
+const SEP = /[\s_-]/;                       // sets a word marker off (any case)
+const RUN = /[\s_+-]/;                      // a run of these, '+' included, is a marker by itself
+const DIGIT = /\d/;
+const JOIN = /[a-z0-9]/;                    // CamelCase-joined: straight after a lower-case letter or digit
 const anyCase = (w) => w.replace(/[A-Za-z]/g, (c) => '[' + c.toUpperCase() + c.toLowerCase() + ']');
-const VERSION_TAIL = new RegExp(String.raw`(?:[\s_+-]+`
-  + String.raw`|[\s_-]+(?:` + VERSION_MARKERS.map(anyCase).join('|') + String.raw`|[Vv]\d+)`
-  + String.raw`|(?<=[a-z0-9])(?:` + VERSION_MARKERS.join('|') + String.raw`|V\d+))+$`);
+const ANY_CASE = new Map(VERSION_MARKERS.map((m) => [m, new RegExp('^' + anyCase(m) + '$')]));
+// where the version marker that ends just before s[j] starts, or j when no marker ends there.
+// Every character test reads one character (charAt gives '' past either end, which no class matches).
+function markerStart(s, j) {
+  let i = j;
+  while (RUN.test(s.charAt(i - 1))) i -= 1;
+  if (i < j) return i;
+  while (DIGIT.test(s.charAt(i - 1))) i -= 1;
+  let k = j, exact = false;
+  if (i < j) {                                // V<digits>
+    const v = s.charAt(i - 1);
+    if (v === 'V' || v === 'v') { k = i - 1; exact = v === 'V'; }
+  } else {
+    for (const m of VERSION_MARKERS) {
+      const w = s.slice(j - m.length, j);
+      if (ANY_CASE.get(m).test(w)) { k = j - m.length; exact = w === m; }
+    }
+  }
+  const before = s.charAt(k - 1);
+  if (SEP.test(before)) return k;             // set off by a separator: any case
+  if (exact && JOIN.test(before)) return k;   // joined: only as written
+  return j;
+}
 export function dreamBase(title) {
   if (typeof title !== 'string') return '';
-  return title.replace(/\(revision \d+\)/gi, '').trim().replace(VERSION_TAIL, '').trim();
+  const s = title.replace(/\(revision \d+\)/gi, '').trim();
+  let j = s.length;
+  for (let k = markerStart(s, j); k !== j; k = markerStart(s, j)) j = k;
+  return s.slice(0, j).trim();
 }
 // the family a title belongs to: its base, with spacing, case and punctuation dropped
 export function dreamFamily(title) {

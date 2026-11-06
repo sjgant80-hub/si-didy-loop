@@ -28,7 +28,9 @@ cd si-didy-loop && npm test
 Sealed in `CLAIMS-dream-week.md` before the measuring code (`dreamweek.mjs`, `scripts/dreamweek-cli.mjs`); result in
 `receipts/dream-week.json`: W1 (more dreams became code after the move to the 7B) HOLDS; W2 (the named repeat fell)
 FAILS and is kept. The fold here now counts a title's whole family (version markers like `++`, Optimized, Redux) so
-the prompt names the real repeat. The resident's night (si-didy, on the laptop, not in git) carries its own
+the prompt names the real repeat. On 2026-11-06 a strict re-check found that rule's first version (one regex) took
+exponential time on a title with a long gap of spaces or `+`; it now reads the same rule right to left in linear time,
+and `lessonsfold.test.mjs` holds it to the first version's answer on 20,000 generated titles. The resident's night (si-didy, on the laptop, not in git) carries its own
 byte-for-byte copy of `lessonsfold.mjs`; it folds by family once that copy is replaced with this one.
 
 ## The rail

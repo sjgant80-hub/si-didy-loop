@@ -280,3 +280,47 @@ test('foldDreams: folding into families never shrinks the top of the list (coars
   assert.deepEqual(lessons.map((l) => [l.title, l.count]), [['PathFinder', 3], ['ColorBlender', 2], ['NoiseReducer', 2], ['Shape', 2], ['Lonely', 1]]);
   assert.equal(lessons.reduce((n, l) => n + l.count, 0), titles.length);
 });
+
+// ── 2026-11-06: the same rule, in linear time (the strict re-check found the shipped regex backtracking) ──
+// The rule as it shipped in 16f126f, one regex, kept here only as the reference the new reading must match.
+const anyCaseRef = (w) => w.replace(/[A-Za-z]/g, (c) => '[' + c.toUpperCase() + c.toLowerCase() + ']');
+const TAIL_REF = new RegExp(String.raw`(?:[\s_+-]+`
+  + String.raw`|[\s_-]+(?:` + VERSION_MARKERS.map(anyCaseRef).join('|') + String.raw`|[Vv]\d+)`
+  + String.raw`|(?<=[a-z0-9])(?:` + VERSION_MARKERS.join('|') + String.raw`|V\d+))+$`);
+const baseRef = (t) => t.replace(/\(revision \d+\)/gi, '').trim().replace(TAIL_REF, '').trim();
+
+test('dreamBase: says exactly what the shipped rule said, on 20,000 generated titles', () => {
+  const pieces = ['Path', 'Finder', 'Shape', 'SHAPE', 'shape', 'x', 'Q', '9', '12', 'V', 'v', ' ', '  ', '\t', '_', '-', '+', '++', '+-',
+    '\u00a0', '\u0130', '\u212a', 'Pros', 'Optimizer', 'Repro', '(revision 2)', ' (revision 13)',
+    ...VERSION_MARKERS, ...VERSION_MARKERS.map((m) => m.toLowerCase()), ...VERSION_MARKERS.map((m) => m.toUpperCase())];
+  let seed = 20261106;
+  const rnd = (n) => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % n; };
+  for (let c = 0; c < 20000; c++) {
+    let t = '';
+    for (let p = rnd(9); p >= 0; p -= 1) t += pieces[rnd(pieces.length)];
+    assert.equal(dreamBase(t), baseRef(t), JSON.stringify(t));
+  }
+});
+
+test('dreamBase: the joins and gaps the shipped rule refused, it still refuses', () => {
+  assert.equal(dreamBase('SHAPEPro'), 'SHAPEPro');        // as written, but after a capital: not joined
+  assert.equal(dreamBase('Shapev2'), 'Shapev2');          // a joined v must be a capital V
+  assert.equal(dreamBase('Shape+Pro'), 'Shape+Pro');      // '+' is a marker, not a separator for a word
+  assert.equal(dreamBase('Shape12V3'), 'Shape12');        // V3 joins after a digit; 12 alone is not a marker
+  assert.equal(dreamBase('Shape 12'), 'Shape 12');
+  assert.equal(dreamBase('-Pro'), '');                    // the separator makes Pro a marker, and the run goes too
+  assert.equal(dreamBase('PathFinderProV2 +'), 'PathFinder');
+  assert.equal(dreamBase('Path Finder Pro V12 (revision 3)'), 'Path Finder');
+});
+
+test('dreamBase: a long gap in a title costs time linear in the title, not a hang', () => {
+  const gap = 'PathFinder' + ' '.repeat(100000) + 'x';
+  const plus = 'PathFinder' + '+-'.repeat(50000) + 'x';
+  const tail = 'PathFinder' + ' Pro'.repeat(25000);
+  const t0 = Date.now();
+  assert.equal(dreamBase(gap), gap);
+  assert.equal(dreamBase(plus), plus);
+  assert.equal(dreamBase(tail), 'PathFinder');
+  assert.equal(dreamFamily('PathFinder' + '+'.repeat(100000)), 'pathfinder');
+  assert.ok(Date.now() - t0 < 2000, 'took ' + (Date.now() - t0) + ' ms');
+});

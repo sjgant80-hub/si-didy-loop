@@ -75,10 +75,10 @@
       "tests": [
         "lessonsfold.test.mjs"
       ],
-      "testCount": 34,
+      "testCount": 37,
       "baseline": "witness.baseline.json",
-      "total": 57,
-      "killed": 56,
+      "total": 71,
+      "killed": 70,
       "ignored": 1,
       "survived": 0,
       "clean": true
@@ -272,7 +272,7 @@
     "course.test.mjs": 25,
     "deepen.test.mjs": 16,
     "dreamweek.test.mjs": 11,
-    "lessonsfold.test.mjs": 34,
+    "lessonsfold.test.mjs": 37,
     "operator.test.mjs": 10,
     "plainsay.test.mjs": 8,
     "rail.test.mjs": 32,
